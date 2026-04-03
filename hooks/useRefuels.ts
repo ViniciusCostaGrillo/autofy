@@ -37,7 +37,7 @@ export function useRefuels() {
     setLoading(true);
 
     if (isLocalAdmin) {
-      const data = await getLocalRefuels();
+      const data = [...(await getLocalRefuels())];
       setRefuels(data.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setLoading(false);
       return;
@@ -71,15 +71,21 @@ export function useRefuels() {
     }
 
     if (isLocalAdmin) {
-      const existing = await getLocalRefuels();
-      const nextRefuel: Refuel = {
-        ...refuel,
-        id: `refuel-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      await saveLocalRefuels([nextRefuel, ...existing]);
-      await refetch();
-      return { error: null };
+      try {
+        const existing = await getLocalRefuels();
+        const nextRefuel: Refuel = {
+          ...refuel,
+          id: `refuel-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        };
+        await saveLocalRefuels([nextRefuel, ...existing]);
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to save local refuel'),
+        };
+      }
     }
 
     const { error } = await supabase.from('refuels').insert({

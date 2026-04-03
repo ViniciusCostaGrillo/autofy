@@ -6,10 +6,9 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 interface EstimateRouteInput {
   origin: string;
   destination: string;
-  fuelPrice: number;
   avgConsumptionKmL: number;
-  useTollTag: boolean;
   fuelType: FuelType;
+  pricingFuelType?: Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>;
 }
 
 interface EstimateRouteResponse {

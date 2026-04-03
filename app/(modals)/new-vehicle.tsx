@@ -9,6 +9,8 @@ import { Car, Gauge, Calendar } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { SearchablePicker } from '@/components/ui/SearchablePicker';
+import { findVehicleCatalogEntry, getModelsByBrand, vehicleBrands } from '@/lib/vehicleCatalog';
 import { FuelType } from '@/types/models';
 
 const schema = z.object({
@@ -37,8 +39,10 @@ export default function NewVehicleModal() {
   const [hasTollTag, setHasTollTag] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [brandPickerVisible, setBrandPickerVisible] = useState(false);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
 
-  const { control, handleSubmit, formState: { errors } } = useForm({
+  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       nickname: '',
@@ -49,6 +53,30 @@ export default function NewVehicleModal() {
       currentOdometer: '0',
     },
   });
+
+  const selectedBrand = watch('brand');
+  const selectedModel = watch('model');
+  const suggestedVehicle = findVehicleCatalogEntry(selectedBrand || '', selectedModel || '');
+  const modelsForSelectedBrand = selectedBrand ? getModelsByBrand(selectedBrand) : [];
+
+  const handleBrandSelect = (brand: string) => {
+    setValue('brand', brand, { shouldValidate: true });
+    const nextModels = getModelsByBrand(brand);
+    if (!nextModels.includes(selectedModel || '')) {
+      setValue('model', '', { shouldValidate: true });
+    }
+  };
+
+  const handleModelSelect = (model: string) => {
+    setValue('model', model, { shouldValidate: true });
+    const catalogEntry = findVehicleCatalogEntry(selectedBrand || '', model);
+    if (!catalogEntry) return;
+
+    setSelectedFuel(catalogEntry.fuelType);
+    setValue('manualAvgConsumption', catalogEntry.recommendedConsumptionKmL.toFixed(1), {
+      shouldValidate: true,
+    });
+  };
 
   const onSubmit = async (data: any) => {
     setSaving(true);
@@ -107,13 +135,38 @@ export default function NewVehicleModal() {
         <View className="flex-row gap-4">
           <View className="flex-1">
             <Controller control={control} name="brand" render={({ field: { onChange, value } }) => (
-              <Input label="Marca" placeholder="Honda" value={value} onChangeText={onChange} error={errors.brand?.message} />
+              <Input
+                label="Marca"
+                placeholder="Honda"
+                value={value}
+                onChangeText={onChange}
+                error={errors.brand?.message}
+              />
             )} />
+            <TouchableOpacity
+              onPress={() => setBrandPickerVisible(true)}
+              className="mt-[-8px] mb-3 self-start px-3 py-2 rounded-full bg-surface border border-surfaceLight"
+            >
+              <Text className="text-textMuted text-xs font-bold">Escolher da lista</Text>
+            </TouchableOpacity>
           </View>
           <View className="flex-1">
             <Controller control={control} name="model" render={({ field: { onChange, value } }) => (
-              <Input label="Modelo" placeholder="Civic" value={value} onChangeText={onChange} error={errors.model?.message} />
+              <Input
+                label="Modelo"
+                placeholder="Civic"
+                value={value}
+                onChangeText={onChange}
+                error={errors.model?.message}
+              />
             )} />
+            <TouchableOpacity
+              onPress={() => setModelPickerVisible(true)}
+              disabled={!selectedBrand}
+              className={`mt-[-8px] mb-3 self-start px-3 py-2 rounded-full border ${selectedBrand ? 'bg-surface border-surfaceLight' : 'bg-surfaceLight border-surfaceLight opacity-50'}`}
+            >
+              <Text className="text-textMuted text-xs font-bold">Escolher da lista</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -157,6 +210,17 @@ export default function NewVehicleModal() {
           />
         )} />
 
+        {suggestedVehicle ? (
+          <View className="mb-6 mt-[-10px] px-1">
+            <Text className="text-primary text-sm font-bold">
+              {suggestedVehicle.recommendationNote} {suggestedVehicle.recommendedConsumptionKmL.toFixed(1)} km/l
+            </Text>
+            <Text className="text-textMuted text-xs mt-1">
+              Esse valor e apenas uma recomendacao inicial e pode ser editado manualmente.
+            </Text>
+          </View>
+        ) : null}
+
         <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">Combustivel</Text>
         <View className="flex-row flex-wrap gap-2 mb-6">
           {FUEL_TYPES.map(({ key, label }) => (
@@ -198,6 +262,21 @@ export default function NewVehicleModal() {
         {submitError ? <Text className="text-danger font-bold mb-4">{submitError}</Text> : null}
         <Button label="Salvar veiculo" onPress={handleSubmit(onSubmit)} isLoading={saving} />
       </ScrollView>
+
+      <SearchablePicker
+        title="Escolher marca"
+        visible={brandPickerVisible}
+        options={vehicleBrands}
+        onClose={() => setBrandPickerVisible(false)}
+        onSelect={handleBrandSelect}
+      />
+      <SearchablePicker
+        title={selectedBrand ? `Modelos de ${selectedBrand}` : 'Escolher modelo'}
+        visible={modelPickerVisible}
+        options={modelsForSelectedBrand}
+        onClose={() => setModelPickerVisible(false)}
+        onSelect={handleModelSelect}
+      />
     </KeyboardAvoidingView>
   );
 }

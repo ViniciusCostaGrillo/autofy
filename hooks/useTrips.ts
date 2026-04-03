@@ -41,7 +41,7 @@ export function useTrips() {
     setLoading(true);
 
     if (isLocalAdmin) {
-      const data = await getLocalTrips();
+      const data = [...(await getLocalTrips())];
       setTrips(data.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setLoading(false);
       return;
@@ -75,15 +75,21 @@ export function useTrips() {
     }
 
     if (isLocalAdmin) {
-      const existing = await getLocalTrips();
-      const nextTrip: Trip = {
-        ...trip,
-        id: `trip-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      await saveLocalTrips([nextTrip, ...existing]);
-      await refetch();
-      return { error: null };
+      try {
+        const existing = await getLocalTrips();
+        const nextTrip: Trip = {
+          ...trip,
+          id: `trip-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        };
+        await saveLocalTrips([nextTrip, ...existing]);
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to save local trip'),
+        };
+      }
     }
 
     const insertPayload = {

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Car, Plus } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -26,7 +26,15 @@ const FUEL_COLORS: Record<string, string> = {
 
 export default function VehiclesScreen() {
   const insets = useSafeAreaInsets();
-  const { vehicles, loading, setDefault } = useVehicles();
+  const { vehicles, loading, refetch, setDefault } = useVehicles();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch().catch((error) => {
+        console.error('Failed to refresh vehicles', error);
+      });
+    }, [refetch])
+  );
 
   if (loading) {
     return (

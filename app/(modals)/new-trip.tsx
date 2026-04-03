@@ -10,6 +10,8 @@ import { useVehicles } from '@/hooks/useVehicles';
 import { useTrips } from '@/hooks/useTrips';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { estimateRoute } from '@/lib/routeEstimate';
+import { FuelType, RouteEstimate } from '@/types/models';
 import {
   calculateRequiredLiters,
   calculateFuelCost,
@@ -37,13 +39,20 @@ export default function NewTripModal() {
   const { vehicles } = useVehicles();
   const { addTrip } = useTrips();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
+  const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
+    defaultPricingFuelType(defaultVehicle?.fuelType)
+  );
   const [result, setResult] = useState<any>(null);
+  const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   const {
     control,
+    getValues,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(tripSchema),
@@ -57,6 +66,47 @@ export default function NewTripModal() {
     },
   });
 
+  const handleAutoEstimate = async () => {
+    if (!defaultVehicle) {
+      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
+      return;
+    }
+
+    const origin = getValues('origin')?.trim();
+    const destination = getValues('destination')?.trim();
+
+    if (!origin || !destination) {
+      setSubmitError('Preencha origem e destino antes de buscar a rota.');
+      return;
+    }
+
+    try {
+      setEstimating(true);
+      setSubmitError('');
+
+      const nextEstimate = await estimateRoute({
+        origin,
+        destination,
+        avgConsumptionKmL: defaultVehicle.manualAvgConsumption,
+        fuelType: defaultVehicle.fuelType,
+        pricingFuelType,
+      });
+
+      setRouteEstimate(nextEstimate);
+      setValue('distanceKm', nextEstimate.distanceKm.toFixed(1), { shouldValidate: true });
+
+      if (nextEstimate.suggestedFuelPrice) {
+        setValue('fuelPrice', nextEstimate.suggestedFuelPrice.toFixed(2), { shouldValidate: true });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Nao foi possivel buscar a distancia automatica.';
+      setSubmitError(message);
+    } finally {
+      setEstimating(false);
+    }
+  };
+
   const onSubmit = (data: any) => {
     if (!defaultVehicle) {
       setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
@@ -68,7 +118,14 @@ export default function NewTripModal() {
     const requiredLiters = calculateRequiredLiters(data.distanceKm, avgConsumption);
     const fuelCost = calculateFuelCost(requiredLiters, data.fuelPrice);
     const totalCost = calculateTotalTripCost(fuelCost, data.tollCost);
-    setResult({ ...data, avgConsumption, requiredLiters, fuelCost, totalCost });
+    setResult({
+      ...data,
+      avgConsumption,
+      requiredLiters,
+      fuelCost,
+      totalCost,
+      durationMinutes: routeEstimate?.durationMinutes,
+    });
   };
 
   const handleSaveTrip = async () => {
@@ -82,6 +139,7 @@ export default function NewTripModal() {
       origin: result.origin,
       destination: result.destination,
       distanceKm: result.distanceKm,
+      durationMinutes: result.durationMinutes,
       avgConsumptionUsed: result.avgConsumption,
       fuelPriceUsed: result.fuelPrice,
       estimatedLiters: result.requiredLiters,
@@ -160,6 +218,50 @@ export default function NewTripModal() {
               )}
             />
 
+            {defaultVehicle?.fuelType === 'flex' ? (
+              <View className="mb-4">
+                <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
+                  Combustivel para preco medio
+                </Text>
+                <View className="flex-row gap-2">
+                  {[
+                    { key: 'gasoline', label: 'Gasolina' },
+                    { key: 'ethanol', label: 'Etanol' },
+                  ].map(({ key, label }) => (
+                    <Button
+                      key={key}
+                      label={label}
+                      variant={pricingFuelType === key ? 'primary' : 'ghost'}
+                      onPress={() => setPricingFuelType(key as Extract<FuelType, 'gasoline' | 'ethanol'>)}
+                      className="flex-1"
+                    />
+                  ))}
+                </View>
+                <Text className="text-textMuted text-xs mt-3 px-1">
+                  Para veiculo flex, escolha se a sugestao da ANP deve usar gasolina ou etanol.
+                </Text>
+              </View>
+            ) : defaultVehicle?.fuelType === 'diesel' ? (
+              <Text className="text-textMuted text-xs mb-4 px-1">
+                A sugestao automatica usara diesel na base oficial da ANP.
+              </Text>
+            ) : defaultVehicle?.fuelType === 'ethanol' ? (
+              <Text className="text-textMuted text-xs mb-4 px-1">
+                A sugestao automatica usara etanol na base oficial da ANP.
+              </Text>
+            ) : defaultVehicle?.fuelType === 'gasoline' || defaultVehicle?.fuelType === 'hybrid' ? (
+              <Text className="text-textMuted text-xs mb-4 px-1">
+                A sugestao automatica usara gasolina na base oficial da ANP.
+              </Text>
+            ) : null}
+
+            <Button
+              label={estimating ? 'Buscando rota...' : 'Buscar distancia e preco medio'}
+              onPress={handleAutoEstimate}
+              isLoading={estimating}
+              className="mb-4"
+            />
+
             <View className="flex-row gap-4">
               <View className="flex-1">
                 <Controller
@@ -177,6 +279,11 @@ export default function NewTripModal() {
                     />
                   )}
                 />
+                {routeEstimate?.distanceSource ? (
+                  <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
+                    Distancia sugerida por {routeEstimate.distanceSource}.
+                  </Text>
+                ) : null}
               </View>
               <View className="flex-1">
                 <Controller
@@ -197,7 +304,7 @@ export default function NewTripModal() {
               </View>
             </View>
 
-            <View className="flex-row gap-4 mb-4">
+            <View className="flex-row gap-4">
               <View className="flex-1">
                 <Controller
                   control={control}
@@ -214,6 +321,19 @@ export default function NewTripModal() {
                     />
                   )}
                 />
+                {routeEstimate?.suggestedFuelPrice ? (
+                  <Text className="text-primary text-xs font-bold mt-[-10px] mb-4 px-1">
+                    Sugestao {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
+                    {routeEstimate.fuelPriceCity && routeEstimate.fuelPriceState
+                      ? ` em ${routeEstimate.fuelPriceCity}/${routeEstimate.fuelPriceState}`
+                      : ''}
+                    {routeEstimate.fuelPriceWeekLabel ? `, ref. ${routeEstimate.fuelPriceWeekLabel}` : ''}.
+                  </Text>
+                ) : (
+                  <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
+                    Preco editavel. Se a API nao encontrar a media local, informe manualmente.
+                  </Text>
+                )}
               </View>
               <View className="flex-1">
                 <Controller
@@ -231,6 +351,9 @@ export default function NewTripModal() {
                     />
                   )}
                 />
+                <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
+                  Pedagio continua manual por enquanto.
+                </Text>
               </View>
             </View>
 
@@ -269,6 +392,10 @@ export default function NewTripModal() {
             <View className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-6">
               {[
                 { label: 'Distancia', value: `${result.distanceKm.toFixed(1)} km` },
+                {
+                  label: 'Duracao',
+                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Nao informada',
+                },
                 { label: 'Combustivel', value: formatCurrency(result.fuelCost) },
                 { label: 'Pedagio', value: formatCurrency(result.tollCost) },
               ].map((item, index, items) => (
@@ -299,4 +426,10 @@ export default function NewTripModal() {
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+function defaultPricingFuelType(fuelType?: FuelType): Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'> {
+  if (fuelType === 'diesel') return 'diesel';
+  if (fuelType === 'ethanol') return 'ethanol';
+  return 'gasoline';
 }

@@ -16,6 +16,13 @@ export interface RouteEstimate {
   totalCost: number;
   currencyCode: string;
   usedTollPass: boolean;
+  suggestedFuelPrice?: number;
+  fuelPriceCity?: string;
+  fuelPriceState?: string;
+  fuelPriceWeekLabel?: string;
+  fuelPriceSource?: string;
+  distanceSource?: string;
+  tollSource?: string;
 }
 
 export interface Vehicle {

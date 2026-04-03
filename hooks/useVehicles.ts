@@ -39,7 +39,7 @@ export function useVehicles() {
     setLoading(true);
 
     if (isLocalAdmin) {
-      const data = await getLocalVehicles();
+      const data = [...(await getLocalVehicles())];
       setVehicles(
         data.sort(
           (a, b) => Number(b.isDefault) - Number(a.isDefault) || b.createdAt.localeCompare(a.createdAt)
@@ -80,34 +80,40 @@ export function useVehicles() {
     }
 
     if (isLocalAdmin) {
-      const existing = await getLocalVehicles();
-      const now = new Date().toISOString();
-      const nextVehicle: Vehicle = {
-        id: `vehicle-${Date.now()}`,
-        userId: session.user.id,
-        nickname: vehicle.nickname,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        year: vehicle.year,
-        fuelType: vehicle.fuelType,
-        manualAvgConsumption: vehicle.manualAvgConsumption,
-        currentOdometer: vehicle.currentOdometer,
-        hasTollTag: vehicle.hasTollTag,
-        isDefault: vehicle.isDefault || existing.length === 0,
-        createdAt: now,
-        updatedAt: now,
-      };
+      try {
+        const existing = await getLocalVehicles();
+        const now = new Date().toISOString();
+        const nextVehicle: Vehicle = {
+          id: `vehicle-${Date.now()}`,
+          userId: session.user.id,
+          nickname: vehicle.nickname,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year,
+          fuelType: vehicle.fuelType,
+          manualAvgConsumption: vehicle.manualAvgConsumption,
+          currentOdometer: vehicle.currentOdometer,
+          hasTollTag: vehicle.hasTollTag,
+          isDefault: vehicle.isDefault || existing.length === 0,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-      const updated = existing
-        .map((item) => ({
-          ...item,
-          isDefault: nextVehicle.isDefault ? false : item.isDefault,
-        }))
-        .concat(nextVehicle);
+        const updated = existing
+          .map((item) => ({
+            ...item,
+            isDefault: nextVehicle.isDefault ? false : item.isDefault,
+          }))
+          .concat(nextVehicle);
 
-      await saveLocalVehicles(updated);
-      await refetch();
-      return { error: null };
+        await saveLocalVehicles(updated);
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to save local vehicle'),
+        };
+      }
     }
 
     if (vehicle.isDefault || vehicles.length === 0) {
@@ -148,23 +154,29 @@ export function useVehicles() {
     }
 
     if (isLocalAdmin) {
-      const existing = await getLocalVehicles();
-      const updated = existing.map((item) => {
-        if (item.id !== id) {
-          return data.isDefault ? { ...item, isDefault: false } : item;
-        }
+      try {
+        const existing = await getLocalVehicles();
+        const updated = existing.map((item) => {
+          if (item.id !== id) {
+            return data.isDefault ? { ...item, isDefault: false } : item;
+          }
 
+          return {
+            ...item,
+            currentOdometer: data.currentOdometer ?? item.currentOdometer,
+            isDefault: data.isDefault ?? item.isDefault,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+
+        await saveLocalVehicles(updated);
+        await refetch();
+        return { error: null };
+      } catch (error) {
         return {
-          ...item,
-          currentOdometer: data.currentOdometer ?? item.currentOdometer,
-          isDefault: data.isDefault ?? item.isDefault,
-          updatedAt: new Date().toISOString(),
+          error: error instanceof Error ? error : new Error('Failed to update local vehicle'),
         };
-      });
-
-      await saveLocalVehicles(updated);
-      await refetch();
-      return { error: null };
+      }
     }
 
     const update: Record<string, unknown> = {};

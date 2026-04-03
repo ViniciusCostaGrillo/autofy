@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Car, MapPin, Fuel, TrendingUp, LogOut } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -11,9 +11,20 @@ import { formatCurrency } from '@/utils/calculations';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { vehicles, loading: vehiclesLoading } = useVehicles();
-  const { refuels, loading: refuelsLoading } = useRefuels();
+  const { vehicles, loading: vehiclesLoading, refetch: refetchVehicles } = useVehicles();
+  const { refuels, loading: refuelsLoading, refetch: refetchRefuels } = useRefuels();
   const { signOut } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchVehicles().catch((error) => {
+        console.error('Failed to refresh dashboard vehicles', error);
+      });
+      refetchRefuels().catch((error) => {
+        console.error('Failed to refresh dashboard refuels', error);
+      });
+    }, [refetchRefuels, refetchVehicles])
+  );
 
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
   const totalSpent = refuels.reduce((sum, refuel) => sum + refuel.totalPrice, 0);
