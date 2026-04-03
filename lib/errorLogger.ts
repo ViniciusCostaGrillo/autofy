@@ -13,6 +13,10 @@ export interface AppErrorLog {
 }
 
 async function readLogs() {
+  if (!__DEV__) {
+    return [] as AppErrorLog[];
+  }
+
   const raw = await AsyncStorage.getItem(ERROR_LOGS_KEY);
   if (!raw) {
     return [] as AppErrorLog[];
@@ -26,6 +30,10 @@ async function readLogs() {
 }
 
 async function writeLogs(logs: AppErrorLog[]) {
+  if (!__DEV__) {
+    return;
+  }
+
   await AsyncStorage.setItem(ERROR_LOGS_KEY, JSON.stringify(logs));
 }
 
@@ -47,7 +55,13 @@ export async function logAppError(
     metadata,
   };
 
-  console.warn(`[${source}]`, message, metadata || {});
+  if (__DEV__) {
+    console.warn(`[${source}]`, message, metadata || {});
+  }
+
+  if (!__DEV__) {
+    return;
+  }
 
   const existing = await readLogs();
   await writeLogs([nextLog, ...existing].slice(0, MAX_ERROR_LOGS));
@@ -58,5 +72,9 @@ export async function getAppErrorLogs() {
 }
 
 export async function clearAppErrorLogs() {
+  if (!__DEV__) {
+    return;
+  }
+
   await AsyncStorage.removeItem(ERROR_LOGS_KEY);
 }
