@@ -20,7 +20,8 @@ export function Button({ label, variant = 'primary', isLoading, className = '', 
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 10, stiffness: 400 });
+    // Heavier, squishier bounce for Waze feel
+    scale.value = withSpring(0.92, { damping: 12, stiffness: 350 });
   };
 
   const handlePressOut = () => {
@@ -29,25 +30,25 @@ export function Button({ label, variant = 'primary', isLoading, className = '', 
 
   const handlePress = (e: any) => {
     if (!isLoading && onPress) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); // Heavier haptic
       onPress(e);
     }
   };
 
-  const baseClasses = 'py-3.5 px-6 rounded-xl flex-row justify-center items-center';
+  const baseClasses = 'py-4 px-6 rounded-full flex-row justify-center items-center border-b-4';
   
   const variantClasses = {
-    primary: 'bg-accent',
-    secondary: 'bg-secondary',
-    danger: 'bg-danger',
-    ghost: 'bg-transparent',
+    primary: 'bg-primary border-[#14833b]', // Spotify Neon Green with darker green 3D border
+    secondary: 'bg-surfaceLight border-[#1a1a1a]', 
+    danger: 'bg-danger border-[#a30e1d]',
+    ghost: 'bg-transparent border-transparent',
   };
 
   const textClasses = {
-    primary: 'text-white font-semibold text-base',
-    secondary: 'text-white font-semibold text-base',
-    danger: 'text-white font-semibold text-base',
-    ghost: 'text-slate-700 dark:text-slate-300 font-semibold text-base',
+    primary: 'text-background font-black text-base uppercase tracking-widest', // High contrast inverted
+    secondary: 'text-textMain font-bold text-base uppercase tracking-wider',
+    danger: 'text-white font-black text-base uppercase tracking-widest',
+    ghost: 'text-textMuted font-bold text-base uppercase tracking-wider',
   };
 
   return (
@@ -61,7 +62,7 @@ export function Button({ label, variant = 'primary', isLoading, className = '', 
       {...props}
     >
       {isLoading ? (
-        <ActivityIndicator color={variant === 'ghost' ? '#334155' : '#ffffff'} />
+        <ActivityIndicator color={variant === 'primary' ? '#121212' : '#ffffff'} />
       ) : (
         <Text className={textClasses[variant]}>{label}</Text>
       )}

@@ -14,11 +14,11 @@ export function StatCard({ title, value, subtitle, icon, className = '' }: StatC
   return (
     <Card className={`flex-1 ${className}`}>
       <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-slate-500 dark:text-slate-400 text-sm font-medium">{title}</Text>
-        {icon && <View className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full">{icon}</View>}
+        <Text className="text-textMuted text-xs font-bold uppercase tracking-wider">{title}</Text>
+        {icon && <View className="bg-surfaceLight p-2 rounded-full">{icon}</View>}
       </View>
-      <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{value}</Text>
-      {subtitle && <Text className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</Text>}
+      <Text className="text-3xl font-black text-textMain mb-1 tracking-tighter">{value}</Text>
+      {subtitle && <Text className="text-xs text-textMuted font-medium">{subtitle}</Text>}
     </Card>
   );
 }

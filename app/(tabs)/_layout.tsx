@@ -6,25 +6,26 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#3B82F6', // accent
-        tabBarInactiveTintColor: '#94A3B8', // slate-400
+        tabBarActiveTintColor: '#1DB954', // Spotify neon green
+        tabBarInactiveTintColor: '#B3B3B3', // Spotify muted gray
         headerShown: true,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#f1f5f9',
+          backgroundColor: '#121212', // Pure Spotify Dark
+          borderTopColor: '#282828', // surfaceLight
           elevation: 0,
           shadowOpacity: 0,
           paddingBottom: 4,
+          height: 60,
         },
         headerStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: '#1E1E1E', // Dark surface for header
           elevation: 0,
           shadowOpacity: 0,
         },
         headerTitleStyle: {
           fontFamily: 'system-ui',
-          fontWeight: '600',
-          color: '#0f172a',
+          fontWeight: '800', // Heavy bold like Spotify
+          color: '#FFFFFF',
         }
       }}>
       <Tabs.Screen

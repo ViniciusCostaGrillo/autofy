@@ -1,24 +1,17 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import 'react-native-reanimated';
 import '../global.css';
-import { useColorScheme } from '@/components/useColorScheme';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
+export const unstable_settings = { initialRouteName: '(tabs)' };
 
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -27,33 +20,83 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+  useEffect(() => { if (error) throw error; }, [error]);
+  useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  if (!loaded) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
+  );
+}
+
+const DarkSpotifyTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#121212',
+    card: '#1E1E1E',
+    text: '#FFFFFF',
+    border: '#282828',
+  },
+};
+
+function RootLayoutNav() {
+  const { session, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+    const inAuthGroup = segments[0] === '(auth)';
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (session && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [session, loading, segments]);
+
+  if (loading) {
+    return <View style={{ flex: 1, backgroundColor: '#121212' }} />;
+  }
+
+  return (
+    <ThemeProvider value={DarkSpotifyTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(modals)/new-trip" options={{ presentation: 'modal', title: 'Planejar Viagem', headerTitleStyle: { fontFamily: 'system-ui', fontWeight: '600' } }} />
-        <Stack.Screen name="(modals)/new-refuel" options={{ presentation: 'modal', title: 'Registrar Abastecimento', headerTitleStyle: { fontFamily: 'system-ui', fontWeight: '600' } }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(modals)/new-trip"
+          options={{
+            presentation: 'modal',
+            title: 'Planejar Viagem',
+            headerStyle: { backgroundColor: '#1E1E1E' },
+            headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+            headerTintColor: '#1DB954',
+          }}
+        />
+        <Stack.Screen
+          name="(modals)/new-refuel"
+          options={{
+            presentation: 'modal',
+            title: 'Abastecimento',
+            headerStyle: { backgroundColor: '#1E1E1E' },
+            headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+            headerTintColor: '#1DB954',
+          }}
+        />
+        <Stack.Screen
+          name="(modals)/new-vehicle"
+          options={{
+            presentation: 'modal',
+            title: 'Novo Veículo',
+            headerStyle: { backgroundColor: '#1E1E1E' },
+            headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+            headerTintColor: '#1DB954',
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

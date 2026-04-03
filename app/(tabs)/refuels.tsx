@@ -1,57 +1,58 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
-import { Fuel, Plus, Calendar } from 'lucide-react-native';
-import { useStore } from '@/store/useStore';
+import React, { useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { Fuel, Plus } from 'lucide-react-native';
+import { useRefuels } from '@/hooks/useRefuels';
 import { formatCurrency } from '@/utils/calculations';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function RefuelsScreen() {
-  const { refuels } = useStore();
+  const { refuels, loading, refetch } = useRefuels();
+
+  useFocusEffect(useCallback(() => { refetch(); }, []));
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 dark:bg-slate-900" contentContainerStyle={{ padding: 24, paddingBottom: 100 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingBottom: 100 }}>
       <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-2xl font-bold text-slate-800 dark:text-white">Abastecimentos</Text>
-        <TouchableOpacity 
+        <Text className="text-3xl font-black text-textMain tracking-tighter">Abastecimentos</Text>
+        <TouchableOpacity
           onPress={() => router.push('/(modals)/new-refuel')}
-          className="bg-emerald-50 dark:bg-emerald-900/30 w-10 h-10 rounded-full items-center justify-center"
+          className="bg-primary w-12 h-12 rounded-full items-center justify-center border-b-4 border-[#14833b]"
         >
-          <Plus size={20} color="#10B981" />
+          <Plus size={24} color="#121212" />
         </TouchableOpacity>
       </View>
 
-      {refuels.length === 0 ? (
-        <EmptyState 
-          icon={<Fuel size={48} color="#94A3B8" />}
+      {loading ? (
+        <View className="py-20 items-center">
+          <ActivityIndicator size="large" color="#1DB954" />
+        </View>
+      ) : refuels.length === 0 ? (
+        <EmptyState
+          icon={<Fuel size={48} color="#B3B3B3" />}
           title="Nenhum abastecimento"
-          description="Você ainda não registrou nenhum abastecimento para o veículo."
+          description="Registre seu primeiro abastecimento para acompanhar seus gastos."
         />
       ) : (
-        <View className="gap-4">
-          {refuels.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((refuel) => (
-            <View key={refuel.id} className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm">
-              <View className="flex-row items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-700 pb-3">
+        <View>
+          {refuels.map((refuel) => (
+            <View key={refuel.id} className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-4">
+              <View className="flex-row items-center justify-between mb-3 border-b border-surfaceLight pb-3">
                 <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 items-center justify-center mr-3">
-                    <Fuel size={18} color="#64748B" />
+                  <View className="w-10 h-10 rounded-full bg-surfaceLight items-center justify-center mr-3">
+                    <Fuel size={18} color="#1DB954" />
                   </View>
                   <View>
-                    <Text className="text-slate-800 dark:text-white font-semibold">
-                      {refuel.gasStation || 'Posto Desconhecido'}
-                    </Text>
-                    <Text className="text-slate-500 text-xs">Odômetro: {refuel.odometer} km</Text>
+                    <Text className="text-textMain font-bold">{refuel.gasStation || 'Posto Desconhecido'}</Text>
+                    <Text className="text-textMuted text-xs font-medium mt-0.5">Odômetro: {refuel.odometer.toLocaleString()} km</Text>
                   </View>
                 </View>
-                <Text className="text-lg font-bold text-emerald-500">{formatCurrency(refuel.totalPrice)}</Text>
+                <Text className="text-xl font-black text-primary">{formatCurrency(refuel.totalPrice)}</Text>
               </View>
-              
-              <View className="flex-row justify-between pt-1">
-                <Text className="text-slate-500 text-sm">{refuel.liters}L</Text>
-                <Text className="text-slate-500 text-sm">{formatCurrency(refuel.pricePerLiter)}/L</Text>
-                <Text className="text-slate-500 text-sm text-right flex-row items-center">
-                   {new Date(refuel.date).toLocaleDateString()}
-                </Text>
+              <View className="flex-row justify-between">
+                <Text className="text-textMuted font-medium text-sm">{refuel.liters.toFixed(1)} L</Text>
+                <Text className="text-textMuted font-medium text-sm">{formatCurrency(refuel.pricePerLiter)}/L</Text>
+                <Text className="text-textMuted font-medium text-sm">{new Date(refuel.date).toLocaleDateString('pt-BR')}</Text>
               </View>
             </View>
           ))}
