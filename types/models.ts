@@ -12,6 +12,7 @@ export type ConsumptionUnit = 'km_l' | 'l_100km' | 'mpg_us' | 'mpg_uk';
 
 export interface AppPreferences {
   onboardingCompleted: boolean;
+  initialVehicleCompleted: boolean;
   language: AppLanguage;
   countryCode: string;
   unitSystem: UnitSystem;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import {
@@ -10,9 +10,7 @@ import {
   unitSystemOptions,
   usePreferences,
 } from '@/lib/PreferencesContext';
-import { AppErrorLog, clearAppErrorLogs, getAppErrorLogs } from '@/lib/errorLogger';
 import { AppLanguage, ConsumptionUnit, UnitSystem } from '@/types/models';
-import { TouchableOpacity } from 'react-native';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -21,7 +19,6 @@ export default function SettingsScreen() {
   const [countryCode, setCountryCode] = useState(preferences.countryCode);
   const [unitSystem, setUnitSystem] = useState<UnitSystem>(preferences.unitSystem);
   const [consumptionUnit, setConsumptionUnit] = useState<ConsumptionUnit>(preferences.consumptionUnit);
-  const [errorLogs, setErrorLogs] = useState<AppErrorLog[]>([]);
 
   useEffect(() => {
     setLanguage(preferences.language);
@@ -29,12 +26,6 @@ export default function SettingsScreen() {
     setUnitSystem(preferences.unitSystem);
     setConsumptionUnit(preferences.consumptionUnit);
   }, [preferences]);
-
-  useEffect(() => {
-    getAppErrorLogs()
-      .then(setErrorLogs)
-      .catch(() => setErrorLogs([]));
-  }, []);
 
   const handleCountryChange = (value: string) => {
     const defaults = getCountryDefaults(value);
@@ -53,15 +44,6 @@ export default function SettingsScreen() {
       consumptionUnit,
       currencyCode: defaults.currencyCode,
     });
-  };
-
-  const handleRefreshLogs = async () => {
-    setErrorLogs(await getAppErrorLogs());
-  };
-
-  const handleClearLogs = async () => {
-    await clearAppErrorLogs();
-    setErrorLogs([]);
   };
 
   return (
@@ -102,32 +84,6 @@ export default function SettingsScreen() {
       />
 
       <Button label={t('settings.save')} onPress={handleSave} className="mt-6" />
-
-      <View className="mt-8 bg-surface rounded-3xl border border-surfaceLight p-5">
-        <Text className="text-textMain text-xl font-black tracking-tight mb-2">Logs de erro</Text>
-        <Text className="text-textMuted mb-4">
-          Ultimos erros gravados no app para diagnostico rapido.
-        </Text>
-        <View className="flex-row gap-3 mb-4">
-          <Button label="Atualizar logs" onPress={handleRefreshLogs} variant="secondary" className="flex-1" />
-          <Button label="Limpar logs" onPress={handleClearLogs} variant="ghost" className="flex-1" />
-        </View>
-        {errorLogs.length === 0 ? (
-          <Text className="text-textMuted">Nenhum erro registrado.</Text>
-        ) : (
-          <View className="gap-3">
-            {errorLogs.slice(0, 8).map((log) => (
-              <View key={log.id} className="rounded-2xl border border-surfaceLight bg-background px-4 py-3">
-                <Text className="text-textMain font-black">{log.source}</Text>
-                <Text className="text-textMuted text-xs mt-1">
-                  {new Date(log.createdAt).toLocaleString()}
-                </Text>
-                <Text className="text-textMain mt-2">{log.message}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
     </ScrollView>
   );
 }

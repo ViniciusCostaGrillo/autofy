@@ -79,12 +79,29 @@ function RootLayoutNav() {
     }
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inVehicleModal = segments[0] === '(modals)' && segments[1] === 'new-vehicle';
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
+      return;
+    }
+
+    if (session && !preferences.initialVehicleCompleted && !inVehicleModal) {
+      router.replace('/(modals)/new-vehicle?initial=1');
+      return;
+    }
+
+    if (session && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [loading, preferences.onboardingCompleted, preferencesLoading, router, segments, session]);
+  }, [
+    loading,
+    preferences.initialVehicleCompleted,
+    preferences.onboardingCompleted,
+    preferencesLoading,
+    router,
+    segments,
+    session,
+  ]);
 
   if (loading || preferencesLoading) {
     return <View style={{ flex: 1, backgroundColor: '#121212' }} />;

@@ -3,7 +3,7 @@ import { View, ScrollView, Text, TouchableOpacity, KeyboardAvoidingView, Platfor
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Car, Gauge, Calendar } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { SearchablePicker } from '@/components/ui/SearchablePicker';
 import { findVehicleCatalogEntry, getModelsByBrand, vehicleBrands } from '@/lib/vehicleCatalog';
+import { usePreferences } from '@/lib/PreferencesContext';
 import { FuelType } from '@/types/models';
 
 const schema = z.object({
@@ -33,9 +34,12 @@ const FUEL_TYPES: { key: FuelType; label: string }[] = [
 
 export default function NewVehicleModal() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ initial?: string }>();
   const { addVehicle, vehicles } = useVehicles();
+  const { updatePreferences } = usePreferences();
+  const isInitialVehicleFlow = params.initial === '1';
   const [selectedFuel, setSelectedFuel] = useState<FuelType>('flex');
-  const [isDefault, setIsDefault] = useState(vehicles.length === 0);
+  const [isDefault, setIsDefault] = useState(vehicles.length === 0 || isInitialVehicleFlow);
   const [hasTollTag, setHasTollTag] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -104,6 +108,10 @@ export default function NewVehicleModal() {
     if (result.error) {
       setSubmitError('Nao foi possivel salvar o veiculo. Tente novamente.');
       return;
+    }
+
+    if (isInitialVehicleFlow) {
+      await updatePreferences({ initialVehicleCompleted: true });
     }
 
     router.back();
@@ -258,7 +266,7 @@ export default function NewVehicleModal() {
           </View>
         </TouchableOpacity>
 
-        {vehicles.length > 0 ? (
+        {vehicles.length > 0 && !isInitialVehicleFlow ? (
           <TouchableOpacity
             onPress={() => setIsDefault(!isDefault)}
             className={`flex-row items-center p-4 rounded-2xl border-2 mb-6 ${isDefault ? 'border-primary bg-primary/10' : 'border-surfaceLight bg-surface'}`}

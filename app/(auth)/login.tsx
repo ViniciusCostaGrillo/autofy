@@ -7,18 +7,21 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
 type LoginMode = 'password' | 'otp';
+type PasswordAction = 'signin' | 'signup';
 type OtpStep = 'email' | 'otp';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { sendOtp, verifyOtp, signInWithPassword, signInAsAdmin, canUseLocalAdmin } = useAuth();
+  const { sendOtp, verifyOtp, signInWithPassword, signUpWithPassword, signInAsAdmin, canUseLocalAdmin } = useAuth();
   const [mode, setMode] = useState<LoginMode>('password');
+  const [passwordAction, setPasswordAction] = useState<PasswordAction>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [otpStep, setOtpStep] = useState<OtpStep>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -31,20 +34,47 @@ export default function LoginScreen() {
     return true;
   };
 
-  const handlePasswordLogin = async () => {
-    if (!validateEmail()) return;
+  const validatePassword = () => {
     if (!password.trim()) {
       setError('Digite sua senha.');
-      return;
+      return false;
     }
+
+    if (password.trim().length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!validateEmail() || !validatePassword()) return;
 
     setLoading(true);
     setError('');
-    const { error: authError } = await signInWithPassword(normalizedEmail, password);
+    setInfo('');
+
+    const action =
+      passwordAction === 'signin'
+        ? signInWithPassword(normalizedEmail, password)
+        : signUpWithPassword(normalizedEmail, password);
+
+    const { error: authError } = await action;
     setLoading(false);
 
     if (authError) {
-      setError('Email ou senha inválidos. Tente novamente.');
+      setError(
+        passwordAction === 'signin'
+          ? 'Email ou senha inválidos. Tente novamente.'
+          : 'Não foi possível criar sua conta. Verifique o email e tente novamente.'
+      );
+      return;
+    }
+
+    if (passwordAction === 'signup') {
+      setInfo('Conta criada com sucesso. Se necessário, confirme o email e faça login.');
+      setPasswordAction('signin');
     }
   };
 
@@ -53,6 +83,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     setError('');
+    setInfo('');
     const { error: authError } = await sendOtp(normalizedEmail);
     setLoading(false);
 
@@ -72,6 +103,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     setError('');
+    setInfo('');
     const { error: authError } = await verifyOtp(normalizedEmail, otp.trim());
     setLoading(false);
 
@@ -85,6 +117,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     setError('');
+    setInfo('');
     const { error: authError } = await sendOtp(normalizedEmail);
     setLoading(false);
 
@@ -136,6 +169,7 @@ export default function LoginScreen() {
               onPress={() => {
                 setMode('password');
                 setError('');
+                setInfo('');
               }}
               variant={mode === 'password' ? 'primary' : 'ghost'}
               className="flex-1"
@@ -145,6 +179,7 @@ export default function LoginScreen() {
               onPress={() => {
                 setMode('otp');
                 setError('');
+                setInfo('');
               }}
               variant={mode === 'otp' ? 'primary' : 'ghost'}
               className="flex-1"
@@ -153,7 +188,11 @@ export default function LoginScreen() {
 
           <Text className="text-textMain font-black text-2xl tracking-tight mb-1">Bem-vindo</Text>
           <Text className="text-textMuted font-medium mb-6">
-            {mode === 'password' ? 'Entre com email e senha.' : 'Entre com código enviado por email.'}
+            {mode === 'password'
+              ? passwordAction === 'signin'
+                ? 'Entre com email e senha.'
+                : 'Crie sua conta com email e senha.'
+              : 'Entre com código enviado por email.'}
           </Text>
 
           <Input
@@ -163,6 +202,7 @@ export default function LoginScreen() {
             onChangeText={(text) => {
               setEmail(text);
               setError('');
+              setInfo('');
             }}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -173,6 +213,8 @@ export default function LoginScreen() {
             error={error}
           />
 
+          {info ? <Text className="text-primary font-bold mb-4">{info}</Text> : null}
+
           {mode === 'password' ? (
             <>
               <Input
@@ -182,6 +224,7 @@ export default function LoginScreen() {
                 onChangeText={(text) => {
                   setPassword(text);
                   setError('');
+                  setInfo('');
                 }}
                 secureTextEntry
                 autoCapitalize="none"
@@ -190,7 +233,24 @@ export default function LoginScreen() {
                 textContentType="password"
                 returnKeyType="done"
               />
-              <Button label="Entrar com senha" onPress={handlePasswordLogin} isLoading={loading} className="mt-2" />
+              <Button
+                label={passwordAction === 'signin' ? 'Entrar com senha' : 'Criar conta'}
+                onPress={handlePasswordSubmit}
+                isLoading={loading}
+                className="mt-2"
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  setPasswordAction((current) => (current === 'signin' ? 'signup' : 'signin'));
+                  setError('');
+                  setInfo('');
+                }}
+                className="items-center py-3"
+              >
+                <Text className="text-primary font-bold">
+                  {passwordAction === 'signin' ? 'Criar conta com senha' : 'Já tenho conta'}
+                </Text>
+              </TouchableOpacity>
             </>
           ) : otpStep === 'email' ? (
             <Button label="Enviar código" onPress={handleSendOtp} isLoading={loading} className="mt-2" />
@@ -205,6 +265,7 @@ export default function LoginScreen() {
                 onChangeText={(text) => {
                   setOtp(text);
                   setError('');
+                  setInfo('');
                 }}
                 keyboardType="number-pad"
                 maxLength={6}
@@ -219,6 +280,7 @@ export default function LoginScreen() {
                   setOtpStep('email');
                   setOtp('');
                   setError('');
+                  setInfo('');
                 }}
                 className="items-center py-2"
               >

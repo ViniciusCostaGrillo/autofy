@@ -18,6 +18,7 @@ interface AuthContextType {
   sendOtp: (email: string) => Promise<{ error: any }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: any }>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ error: any }>;
   signInAsAdmin: () => Promise<void>;
 }
 
@@ -103,6 +104,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const signUpWithPassword = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      await logAppError('auth.signUpWithPassword', error, { email });
+    }
+
+    return { error };
+  };
+
   const signOut = async () => {
     try {
       await removeSecureFlag(LOCAL_ADMIN_KEY);
@@ -141,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sendOtp,
         verifyOtp,
         signInWithPassword,
+        signUpWithPassword,
         signInAsAdmin,
       }}
     >

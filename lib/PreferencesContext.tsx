@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AppPreferences, AppLanguage, ConsumptionUnit, UnitSystem } from '@/types/models';
+import { AppLanguage, AppPreferences, ConsumptionUnit, UnitSystem } from '@/types/models';
 import { getLocalPreferences, saveLocalPreferences } from '@/lib/localStore';
 
 type TranslationKey =
@@ -59,6 +59,7 @@ interface PreferencesContextType {
 
 const defaultPreferences: AppPreferences = {
   onboardingCompleted: false,
+  initialVehicleCompleted: false,
   language: 'pt-BR',
   countryCode: 'BR',
   unitSystem: 'metric',
@@ -200,12 +201,12 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'settings.l_100km': 'L/100 km',
     'settings.mpg_us': 'MPG (US)',
     'settings.mpg_uk': 'MPG (UK)',
-    'trip.autoFuelFlexHint': 'Para vehiculos flex, elige si la sugerencia de la ANP debe usar gasolina o etanol.',
+    'trip.autoFuelFlexHint': 'Para vehículos flex, elige si la sugerencia de la ANP debe usar gasolina o etanol.',
     'trip.autoFuelGasoline': 'Gasolina',
     'trip.autoFuelEthanol': 'Etanol',
-    'trip.autoFuelDieselHint': 'La sugerencia automatica usara diesel de la base oficial de la ANP.',
-    'trip.autoFuelEthanolHint': 'La sugerencia automatica usara etanol de la base oficial de la ANP.',
-    'trip.autoFuelGasolineHint': 'La sugerencia automatica usara gasolina de la base oficial de la ANP.',
+    'trip.autoFuelDieselHint': 'La sugerencia automática usará diesel de la base oficial de la ANP.',
+    'trip.autoFuelEthanolHint': 'La sugerencia automática usará etanol de la base oficial de la ANP.',
+    'trip.autoFuelGasolineHint': 'La sugerencia automática usará gasolina de la base oficial de la ANP.',
     'common.delete': 'Borrar',
     'common.cancel': 'Cancelar',
     'common.save': 'Guardar',
@@ -215,8 +216,8 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'oil.emptyTitle': 'Sin cambios registrados',
     'oil.emptyDescription': 'Registra el cambio de aceite para recibir alertas por fecha y kilometraje.',
     'oil.new': 'Nuevo cambio',
-    'oil.nextByDate': 'Proximo cambio por fecha',
-    'oil.nextByKm': 'Proximo cambio por km',
+    'oil.nextByDate': 'Próximo cambio por fecha',
+    'oil.nextByKm': 'Próximo cambio por km',
     'oil.alertDue': 'Cambio de aceite vencido',
     'oil.alertSoon': 'Cambio de aceite próximo',
   },
