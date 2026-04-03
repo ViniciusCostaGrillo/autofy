@@ -14,6 +14,8 @@ import { estimateRoute } from '@/lib/routeEstimate';
 import { FuelType, RouteEstimate } from '@/types/models';
 import { usePreferences } from '@/lib/PreferencesContext';
 import { searchRoutePlaces } from '@/lib/routePlaces';
+import { useAuth } from '@/lib/AuthContext';
+import { logAppError } from '@/lib/errorLogger';
 import {
   calculateRequiredLiters,
   calculateFuelCost,
@@ -22,17 +24,17 @@ import {
 } from '@/utils/calculations';
 
 const tripSchema = z.object({
-  origin: z.string().min(2, 'Origem obrigatoria'),
-  destination: z.string().min(2, 'Destino obrigatorio'),
+  origin: z.string().min(2, 'Origem obrigatória'),
+  destination: z.string().min(2, 'Destino obrigatório'),
   distanceKm: z
     .string()
     .transform((value) => Number(value.replace(',', '.')))
-    .pipe(z.number().positive('Distancia invalida')),
+    .pipe(z.number().positive('Distância inválida')),
   passengers: z.string().optional().transform((value) => (value ? Number(value) : 1)),
   fuelPrice: z
     .string()
     .transform((value) => Number(value.replace(',', '.')))
-    .pipe(z.number().positive('Preco invalido')),
+    .pipe(z.number().positive('Preço inválido')),
   tollCost: z.string().optional().transform((value) => (value ? Number(value.replace(',', '.')) : 0)),
 });
 
@@ -41,7 +43,9 @@ export default function NewTripModal() {
   const { vehicles } = useVehicles();
   const { addTrip } = useTrips();
   const { preferences, t } = usePreferences();
+  const { session, isLocalAdmin } = useAuth();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
+  const canUseAutomaticRouteServices = Boolean(session?.access_token) && !isLocalAdmin;
   const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
     defaultPricingFuelType(defaultVehicle?.fuelType)
   );
@@ -81,6 +85,11 @@ export default function NewTripModal() {
       return;
     }
 
+    if (!canUseAutomaticRouteServices) {
+      setPlaceSuggestions([]);
+      return;
+    }
+
     const value = getValues(focusedField)?.trim();
     if (!value || value.length < 2) {
       setPlaceSuggestions([]);
@@ -92,17 +101,33 @@ export default function NewTripModal() {
         .then((results) => {
           setPlaceSuggestions(results);
         })
-        .catch(() => {
+        .catch((error) => {
+          logAppError('tripPlanner.searchRoutePlaces', error, {
+            field: focusedField,
+            countryCode: preferences.countryCode,
+          }).catch(() => undefined);
           setPlaceSuggestions([]);
         });
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [focusedField, getValues, preferences.countryCode, watchedDestination, watchedOrigin]);
+  }, [
+    canUseAutomaticRouteServices,
+    focusedField,
+    getValues,
+    preferences.countryCode,
+    watchedDestination,
+    watchedOrigin,
+  ]);
 
   const handleAutoEstimate = async () => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
+      setSubmitError('Cadastre um veículo antes de planejar uma viagem.');
+      return;
+    }
+
+    if (!canUseAutomaticRouteServices) {
+      setSubmitError('O cálculo automático exige login por email. No modo admin de teste, informe a distância manualmente.');
       return;
     }
 
@@ -134,8 +159,14 @@ export default function NewTripModal() {
         setValue('fuelPrice', nextEstimate.suggestedFuelPrice.toFixed(2), { shouldValidate: true });
       }
     } catch (error) {
+      await logAppError('tripPlanner.handleAutoEstimate', error, {
+        origin,
+        destination,
+        countryCode: preferences.countryCode,
+        isLocalAdmin,
+      });
       const message =
-        error instanceof Error ? error.message : 'Nao foi possivel buscar a distancia automatica.';
+        error instanceof Error ? error.message : 'Não foi possível buscar a distância automática.';
       setSubmitError(message);
     } finally {
       setEstimating(false);
@@ -144,7 +175,7 @@ export default function NewTripModal() {
 
   const onSubmit = (data: any) => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
+      setSubmitError('Cadastre um veículo antes de planejar uma viagem.');
       return;
     }
 
@@ -211,11 +242,11 @@ export default function NewTripModal() {
         {!result ? (
           <>
             <View className="mb-6 p-4 bg-surface rounded-3xl border border-surfaceLight">
-              <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
-                Veiculo selecionado
+      <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
+                Veículo selecionado
               </Text>
               <Text className="text-textMain font-black text-lg tracking-tight">
-                {defaultVehicle?.nickname || 'Nenhum veiculo'}
+                {defaultVehicle?.nickname || 'Nenhum veículo'}
               </Text>
               <Text className="text-xs text-textMuted font-medium mt-0.5">
                 Consumo base: {defaultVehicle?.manualAvgConsumption} km/l
@@ -273,10 +304,16 @@ export default function NewTripModal() {
               </View>
             ) : null}
 
+            {!canUseAutomaticRouteServices ? (
+              <Text className="text-textMuted text-xs mb-4 px-1">
+                Busca automática de rota disponível apenas para contas autenticadas por email.
+              </Text>
+            ) : null}
+
             {defaultVehicle?.fuelType === 'flex' ? (
               <View className="mb-4">
                 <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
-                  Combustivel para preco medio
+                  Combustível para preço médio
                 </Text>
                 <View className="flex-row gap-2">
                   {[
@@ -311,9 +348,16 @@ export default function NewTripModal() {
             ) : null}
 
             <Button
-              label={estimating ? 'Buscando rota...' : 'Buscar distancia e preco medio'}
+              label={
+                !canUseAutomaticRouteServices
+                  ? 'Faça login por email para usar'
+                  : estimating
+                    ? 'Buscando rota...'
+                    : 'Buscar distância e preço médio'
+              }
               onPress={handleAutoEstimate}
               isLoading={estimating}
+              disabled={!canUseAutomaticRouteServices}
               className="mb-4"
             />
 
@@ -324,7 +368,7 @@ export default function NewTripModal() {
                   name="distanceKm"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Distancia (km)"
+                      label="Distância (km)"
                       placeholder="150"
                       keyboardType="decimal-pad"
                       value={value}
@@ -336,7 +380,7 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.distanceSource ? (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Distancia sugerida por {routeEstimate.distanceSource}.
+                    Distância sugerida por {routeEstimate.distanceSource}.
                   </Text>
                 ) : null}
               </View>
@@ -366,7 +410,7 @@ export default function NewTripModal() {
                   name="fuelPrice"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Preco combustivel"
+                      label="Preço combustível"
                       placeholder="5.79"
                       keyboardType="decimal-pad"
                       value={value}
@@ -378,7 +422,7 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.suggestedFuelPrice ? (
                   <Text className="text-primary text-xs font-bold mt-[-10px] mb-4 px-1">
-                    Sugestao {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
+                    Sugestão {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
                     {routeEstimate.fuelPriceCity && routeEstimate.fuelPriceState
                       ? ` em ${routeEstimate.fuelPriceCity}/${routeEstimate.fuelPriceState}`
                       : ''}
@@ -386,7 +430,7 @@ export default function NewTripModal() {
                   </Text>
                 ) : (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Preco editavel. Se a API nao encontrar a media local, informe manualmente.
+                    Preço editável. Se a API não encontrar a média local, informe manualmente.
                   </Text>
                 )}
               </View>
@@ -396,7 +440,7 @@ export default function NewTripModal() {
                   name="tollCost"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Pedagios"
+                      label="Pedágios"
                       placeholder="24.50"
                       keyboardType="decimal-pad"
                       value={value}
@@ -407,7 +451,7 @@ export default function NewTripModal() {
                   )}
                 />
                 <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                  Pedagio continua manual por enquanto.
+                  Pedágio continua manual por enquanto.
                 </Text>
               </View>
             </View>
@@ -434,7 +478,7 @@ export default function NewTripModal() {
                 </View>
                 <View className="items-end">
                   <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">
-                    Combustivel
+                    Combustível
                   </Text>
                   <Text className="text-white font-black text-xl mt-1">
                     {result.requiredLiters.toFixed(2)} L
@@ -446,13 +490,13 @@ export default function NewTripModal() {
             <Text className="text-textMain font-black text-xl tracking-tight mb-4">Resumo da rota</Text>
             <View className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-6">
               {[
-                { label: 'Distancia', value: `${result.distanceKm.toFixed(1)} km` },
+                { label: 'Distância', value: `${result.distanceKm.toFixed(1)} km` },
                 {
-                  label: 'Duracao',
-                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Nao informada',
+                  label: 'Duração',
+                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Não informada',
                 },
-                { label: 'Combustivel', value: formatCurrency(result.fuelCost) },
-                { label: 'Pedagio', value: formatCurrency(result.tollCost) },
+                { label: 'Combustível', value: formatCurrency(result.fuelCost) },
+                { label: 'Pedágio', value: formatCurrency(result.tollCost) },
               ].map((item, index, items) => (
                 <View
                   key={item.label}

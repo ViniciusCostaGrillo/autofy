@@ -1,4 +1,5 @@
 import { FuelType, RouteEstimate } from '@/types/models';
+import { logAppError } from './errorLogger';
 import { supabase } from './supabase';
 
 interface EstimateRouteInput {
@@ -22,7 +23,13 @@ export async function estimateRoute(input: EstimateRouteInput): Promise<RouteEst
 
   const payload = data as EstimateRouteResponse | null;
   if (error || !payload?.data) {
-    throw new Error(payload?.error || error?.message || 'Nao foi possivel calcular a rota.');
+    const nextError = new Error(payload?.error || error?.message || 'Nao foi possivel calcular a rota.');
+    await logAppError('functions.route-estimate', nextError, {
+      origin: input.origin,
+      destination: input.destination,
+      countryCode: input.countryCode || 'BR',
+    });
+    throw nextError;
   }
 
   return payload.data;

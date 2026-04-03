@@ -1,3 +1,4 @@
+import { logAppError } from './errorLogger';
 import { supabase } from './supabase';
 
 interface SearchPlacesResponse {
@@ -16,7 +17,12 @@ export async function searchRoutePlaces(query: string, countryCode = 'BR') {
 
   const payload = data as SearchPlacesResponse | null;
   if (error) {
-    throw new Error(payload?.error || error.message || 'Nao foi possivel buscar lugares.');
+    const nextError = new Error(payload?.error || error.message || 'Nao foi possivel buscar lugares.');
+    await logAppError('functions.route-places', nextError, {
+      query,
+      countryCode,
+    });
+    throw nextError;
   }
 
   return payload?.data || [];

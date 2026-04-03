@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
+import { logAppError } from './errorLogger';
 import { supabase } from './supabase';
 import { getSecureFlag, removeSecureFlag, setSecureFlag } from './secureStorage';
 
@@ -70,19 +71,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       options: { shouldCreateUser: true },
     });
+
+    if (error) {
+      await logAppError('auth.sendOtp', error, { email });
+    }
+
     return { error };
   };
 
   const verifyOtp = async (email: string, token: string) => {
     const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+
+    if (error) {
+      await logAppError('auth.verifyOtp', error, { email });
+    }
+
     return { error };
   };
 
   const signOut = async () => {
-    await removeSecureFlag(LOCAL_ADMIN_KEY);
-    setIsLocalAdmin(false);
-    setSession(null);
-    await supabase.auth.signOut();
+    try {
+      await removeSecureFlag(LOCAL_ADMIN_KEY);
+      setIsLocalAdmin(false);
+      setSession(null);
+      await supabase.auth.signOut();
+    } catch (error) {
+      await logAppError('auth.signOut', error);
+      throw error;
+    }
   };
 
   const signInAsAdmin = async () => {
@@ -90,9 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Local admin is disabled outside development.');
     }
 
-    await setSecureFlag(LOCAL_ADMIN_KEY, 'true');
-    setIsLocalAdmin(true);
-    setSession(createLocalAdminSession());
+    try {
+      await setSecureFlag(LOCAL_ADMIN_KEY, 'true');
+      setIsLocalAdmin(true);
+      setSession(createLocalAdminSession());
+    } catch (error) {
+      await logAppError('auth.signInAsAdmin', error);
+      throw error;
+    }
   };
 
   return (
