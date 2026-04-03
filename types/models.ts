@@ -7,6 +7,17 @@ export interface User {
 
 export type FuelType = 'gasoline' | 'ethanol' | 'diesel' | 'flex' | 'electric' | 'hybrid';
 
+export interface RouteEstimate {
+  distanceKm: number;
+  durationMinutes: number;
+  tollCost: number;
+  fuelLiters: number;
+  fuelCost: number;
+  totalCost: number;
+  currencyCode: string;
+  usedTollPass: boolean;
+}
+
 export interface Vehicle {
   id: string;
   userId: string;

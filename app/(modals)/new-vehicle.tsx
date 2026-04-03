@@ -34,6 +34,7 @@ export default function NewVehicleModal() {
   const { addVehicle, vehicles } = useVehicles();
   const [selectedFuel, setSelectedFuel] = useState<FuelType>('flex');
   const [isDefault, setIsDefault] = useState(vehicles.length === 0);
+  const [hasTollTag, setHasTollTag] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -61,7 +62,7 @@ export default function NewVehicleModal() {
       fuelType: selectedFuel,
       manualAvgConsumption: data.manualAvgConsumption,
       currentOdometer: data.currentOdometer,
-      hasTollTag: false,
+      hasTollTag,
       isDefault: isDefault || vehicles.length === 0,
     });
 
@@ -168,6 +169,19 @@ export default function NewVehicleModal() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <TouchableOpacity
+          onPress={() => setHasTollTag(!hasTollTag)}
+          className={`flex-row items-center p-4 rounded-2xl border-2 mb-6 ${hasTollTag ? 'border-primary bg-primary/10' : 'border-surfaceLight bg-surface'}`}
+        >
+          <View className={`w-6 h-6 rounded-full border-2 mr-3 items-center justify-center ${hasTollTag ? 'bg-primary border-primary' : 'border-surfaceLight'}`}>
+            {hasTollTag ? <Text className="text-background text-xs font-black">OK</Text> : null}
+          </View>
+          <View className="flex-1">
+            <Text className={`font-bold ${hasTollTag ? 'text-primary' : 'text-textMuted'}`}>Possui tag de pedagio</Text>
+            <Text className="text-textMuted text-xs mt-1">Usa estimativa com Sem Parar ao calcular pedagios.</Text>
+          </View>
+        </TouchableOpacity>
 
         {vehicles.length > 0 ? (
           <TouchableOpacity

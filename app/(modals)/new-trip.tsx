@@ -5,48 +5,90 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MapPin, Users, Route, Fuel, DollarSign, Navigation } from 'lucide-react-native';
+import { MapPin, Users, Fuel, Navigation, Clock3, Ticket, Route as RouteIcon } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useTrips } from '@/hooks/useTrips';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { calculateRequiredLiters, calculateFuelCost, calculateTotalTripCost, formatCurrency } from '@/utils/calculations';
+import { estimateRoute } from '@/lib/routeEstimate';
+import { RouteEstimate } from '@/types/models';
+import { formatCurrency } from '@/utils/calculations';
 
 const tripSchema = z.object({
   origin: z.string().min(2, 'Origem obrigatoria'),
   destination: z.string().min(2, 'Destino obrigatorio'),
-  distanceKm: z.string().transform((value) => Number(value.replace(',', '.'))).pipe(z.number().positive('Distancia invalida')),
   passengers: z.string().optional().transform((value) => (value ? Number(value) : 1)),
-  fuelPrice: z.string().transform((value) => Number(value.replace(',', '.'))).pipe(z.number().positive('Preco invalido')),
-  tollCost: z.string().optional().transform((value) => (value ? Number(value.replace(',', '.')) : 0)),
+  fuelPrice: z
+    .string()
+    .transform((value) => Number(value.replace(',', '.')))
+    .pipe(z.number().positive('Preco invalido')),
 });
+
+interface TripPreview extends RouteEstimate {
+  origin: string;
+  destination: string;
+  passengers: number;
+  fuelPrice: number;
+  avgConsumptionKmL: number;
+}
 
 export default function NewTripModal() {
   const insets = useSafeAreaInsets();
   const { vehicles } = useVehicles();
   const { addTrip } = useTrips();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TripPreview | null>(null);
+  const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const { control, handleSubmit, formState: { errors } } = useForm({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     resolver: zodResolver(tripSchema),
-    defaultValues: { origin: '', destination: '', distanceKm: '', passengers: '1', fuelPrice: '', tollCost: '0' },
+    defaultValues: {
+      origin: '',
+      destination: '',
+      passengers: '1',
+      fuelPrice: '',
+    },
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     if (!defaultVehicle) {
       setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
       return;
     }
 
+    setCalculating(true);
     setSubmitError('');
-    const avgConsumption = defaultVehicle.manualAvgConsumption;
-    const requiredLiters = calculateRequiredLiters(data.distanceKm, avgConsumption);
-    const fuelCost = calculateFuelCost(requiredLiters, data.fuelPrice);
-    const totalCost = calculateTotalTripCost(fuelCost, data.tollCost);
-    setResult({ ...data, avgConsumption, requiredLiters, fuelCost, totalCost });
+
+    try {
+      const estimate = await estimateRoute({
+        origin: data.origin,
+        destination: data.destination,
+        fuelPrice: data.fuelPrice,
+        avgConsumptionKmL: defaultVehicle.manualAvgConsumption,
+        useTollTag: defaultVehicle.hasTollTag,
+        fuelType: defaultVehicle.fuelType,
+      });
+
+      setResult({
+        ...estimate,
+        origin: data.origin,
+        destination: data.destination,
+        passengers: data.passengers,
+        fuelPrice: data.fuelPrice,
+        avgConsumptionKmL: defaultVehicle.manualAvgConsumption,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nao foi possivel calcular a rota.';
+      setSubmitError(message);
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const handleSaveTrip = async () => {
@@ -60,9 +102,10 @@ export default function NewTripModal() {
       origin: result.origin,
       destination: result.destination,
       distanceKm: result.distanceKm,
-      avgConsumptionUsed: result.avgConsumption,
+      durationMinutes: result.durationMinutes,
+      avgConsumptionUsed: result.avgConsumptionKmL,
       fuelPriceUsed: result.fuelPrice,
-      estimatedLiters: result.requiredLiters,
+      estimatedLiters: result.fuelLiters,
       tollCost: result.tollCost,
       fuelCost: result.fuelCost,
       totalCost: result.totalCost,
@@ -99,44 +142,78 @@ export default function NewTripModal() {
               <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">Veiculo selecionado</Text>
               <Text className="text-textMain font-black text-lg tracking-tight">{defaultVehicle?.nickname || 'Nenhum veiculo'}</Text>
               <Text className="text-xs text-textMuted font-medium mt-0.5">Consumo base: {defaultVehicle?.manualAvgConsumption} km/l</Text>
+              <Text className="text-xs text-textMuted font-medium mt-0.5">Tag de pedagio: {defaultVehicle?.hasTollTag ? 'Sim (Sem Parar)' : 'Nao'}</Text>
             </View>
 
             {submitError ? <Text className="text-danger font-bold mb-4">{submitError}</Text> : null}
 
-            <Controller control={control} name="origin" render={({ field: { onChange, value } }) => (
-              <Input label="Origem" placeholder="Ex: Sao Paulo, SP" value={value} onChangeText={onChange} error={errors.origin?.message} leftIcon={<Navigation size={20} color="#B3B3B3" />} />
-            )} />
-            <Controller control={control} name="destination" render={({ field: { onChange, value } }) => (
-              <Input label="Destino" placeholder="Ex: Campinas, SP" value={value} onChangeText={onChange} error={errors.destination?.message} leftIcon={<MapPin size={20} color="#1DB954" />} />
-            )} />
-
-            <View className="flex-row gap-4">
-              <View className="flex-1">
-                <Controller control={control} name="distanceKm" render={({ field: { onChange, value } }) => (
-                  <Input label="Distancia (km)" placeholder="95.5" keyboardType="decimal-pad" value={value} onChangeText={onChange} error={errors.distanceKm?.message} leftIcon={<Route size={20} color="#B3B3B3" />} />
-                )} />
-              </View>
-              <View className="flex-1">
-                <Controller control={control} name="passengers" render={({ field: { onChange, value } }) => (
-                  <Input label="Pessoas" placeholder="1" keyboardType="number-pad" value={value} onChangeText={onChange} error={errors.passengers?.message} leftIcon={<Users size={20} color="#B3B3B3" />} />
-                )} />
-              </View>
-            </View>
+            <Controller
+              control={control}
+              name="origin"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Origem"
+                  placeholder="Ex: Cascavel, PR"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.origin?.message}
+                  leftIcon={<Navigation size={20} color="#B3B3B3" />}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="destination"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Destino"
+                  placeholder="Ex: Foz do Iguacu, PR"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.destination?.message}
+                  leftIcon={<MapPin size={20} color="#1DB954" />}
+                />
+              )}
+            />
 
             <View className="flex-row gap-4 mb-4">
               <View className="flex-1">
-                <Controller control={control} name="fuelPrice" render={({ field: { onChange, value } }) => (
-                  <Input label="Preco combustivel" placeholder="5.79" keyboardType="decimal-pad" value={value} onChangeText={onChange} error={errors.fuelPrice?.message} leftIcon={<Fuel size={20} color="#B3B3B3" />} />
-                )} />
+                <Controller
+                  control={control}
+                  name="fuelPrice"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Preco combustivel"
+                      placeholder="5.79"
+                      keyboardType="decimal-pad"
+                      value={value}
+                      onChangeText={onChange}
+                      error={errors.fuelPrice?.message}
+                      leftIcon={<Fuel size={20} color="#B3B3B3" />}
+                    />
+                  )}
+                />
               </View>
               <View className="flex-1">
-                <Controller control={control} name="tollCost" render={({ field: { onChange, value } }) => (
-                  <Input label="Pedagios" placeholder="24.50" keyboardType="decimal-pad" value={value} onChangeText={onChange} error={errors.tollCost?.message} leftIcon={<DollarSign size={20} color="#B3B3B3" />} />
-                )} />
+                <Controller
+                  control={control}
+                  name="passengers"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Pessoas"
+                      placeholder="1"
+                      keyboardType="number-pad"
+                      value={value}
+                      onChangeText={onChange}
+                      error={errors.passengers?.message}
+                      leftIcon={<Users size={20} color="#B3B3B3" />}
+                    />
+                  )}
+                />
               </View>
             </View>
 
-            <Button label="Calcular custo" onPress={handleSubmit(onSubmit)} className="mt-2" />
+            <Button label="Calcular rota" onPress={handleSubmit(onSubmit)} isLoading={calculating} className="mt-2" />
           </>
         ) : (
           <View>
@@ -150,24 +227,44 @@ export default function NewTripModal() {
                 </View>
                 <View className="items-end">
                   <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Combustivel</Text>
-                  <Text className="text-white font-black text-xl mt-1">{result.requiredLiters.toFixed(1)} L</Text>
+                  <Text className="text-white font-black text-xl mt-1">{result.fuelLiters.toFixed(2)} L</Text>
                 </View>
               </View>
             </View>
 
             <Text className="text-textMain font-black text-xl tracking-tight mb-4">Resumo da rota</Text>
             <View className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-6">
-              {[{ label: 'Combustivel', value: formatCurrency(result.fuelCost) }, { label: 'Pedagio', value: formatCurrency(result.tollCost) }, { label: 'Distancia', value: `${result.distanceKm} km` }].map((item, index, items) => (
-                <View key={item.label} className={`flex-row justify-between py-3 ${index < items.length - 1 ? 'border-b border-surfaceLight' : ''}`}>
-                  <Text className="text-textMuted font-bold">{item.label}</Text>
+              {[
+                { label: 'Distancia', value: `${result.distanceKm.toFixed(1)} km`, icon: <RouteIcon size={16} color="#B3B3B3" /> },
+                { label: 'Duracao', value: `${result.durationMinutes} min`, icon: <Clock3 size={16} color="#B3B3B3" /> },
+                { label: 'Combustivel', value: formatCurrency(result.fuelCost), icon: <Fuel size={16} color="#B3B3B3" /> },
+                { label: 'Pedagio', value: formatCurrency(result.tollCost), icon: <Ticket size={16} color="#B3B3B3" /> },
+              ].map((item, index, items) => (
+                <View key={item.label} className={`flex-row justify-between items-center py-3 ${index < items.length - 1 ? 'border-b border-surfaceLight' : ''}`}>
+                  <View className="flex-row items-center">
+                    <View className="mr-2">{item.icon}</View>
+                    <Text className="text-textMuted font-bold">{item.label}</Text>
+                  </View>
                   <Text className="font-black text-textMain">{item.value}</Text>
                 </View>
               ))}
             </View>
 
+            <View className="bg-surface rounded-3xl p-4 border border-surfaceLight mb-6">
+              <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">Tag de pedagio aplicada</Text>
+              <Text className="text-textMain font-bold">{result.usedTollPass ? 'Sem Parar' : 'Sem tag'}</Text>
+            </View>
+
             {submitError ? <Text className="text-danger font-bold mb-4">{submitError}</Text> : null}
             <Button label="Salvar viagem" onPress={handleSaveTrip} isLoading={saving} className="mb-4" />
-            <Button label="Recalcular" variant="ghost" onPress={() => { setSubmitError(''); setResult(null); }} />
+            <Button
+              label="Recalcular"
+              variant="ghost"
+              onPress={() => {
+                setSubmitError('');
+                setResult(null);
+              }}
+            />
           </View>
         )}
       </ScrollView>

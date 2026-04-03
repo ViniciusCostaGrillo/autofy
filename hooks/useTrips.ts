@@ -14,6 +14,7 @@ const mapTrip = (row: any): Trip => ({
   origin: row.origin || '',
   destination: row.destination || '',
   distanceKm: Number(row.distance_km) || 0,
+  durationMinutes: Number(row.duration_minutes) || undefined,
   avgConsumptionUsed: Number(row.avg_consumption_used) || 0,
   fuelPriceUsed: Number(row.fuel_price_used) || 0,
   estimatedLiters: Number(row.estimated_liters) || 0,
@@ -85,12 +86,13 @@ export function useTrips() {
       return { error: null };
     }
 
-    const { error } = await supabase.from('trips').insert({
+    const insertPayload = {
       user_id: session.user.id,
       vehicle_id: trip.vehicleId,
       origin: trip.origin,
       destination: trip.destination,
       distance_km: trip.distanceKm,
+      duration_minutes: trip.durationMinutes,
       avg_consumption_used: trip.avgConsumptionUsed,
       fuel_price_used: trip.fuelPriceUsed,
       estimated_liters: trip.estimatedLiters,
@@ -99,7 +101,16 @@ export function useTrips() {
       total_cost: trip.totalCost,
       round_trip: trip.roundTrip,
       passengers: trip.passengers,
-    });
+    };
+
+    let { error } = await supabase.from('trips').insert(insertPayload);
+
+    if (error && `${error.message}`.includes('duration_minutes')) {
+      const fallbackPayload = { ...insertPayload };
+      delete fallbackPayload.duration_minutes;
+      const fallbackResult = await supabase.from('trips').insert(fallbackPayload);
+      error = fallbackResult.error;
+    }
 
     if (error) {
       return { error };

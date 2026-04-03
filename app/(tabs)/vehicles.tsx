@@ -116,6 +116,15 @@ export default function VehiclesScreen() {
                     </View>
                   </View>
 
+                  <View className="mt-3">
+                    <Text className="text-xs font-bold uppercase tracking-wider text-textMuted mb-1">
+                      Tag de pedagio
+                    </Text>
+                    <Text className={`font-bold text-sm ${vehicle.hasTollTag ? 'text-primary' : 'text-textMuted'}`}>
+                      {vehicle.hasTollTag ? 'Sem Parar' : 'Nao possui'}
+                    </Text>
+                  </View>
+
                   {!vehicle.isDefault ? (
                     <TouchableOpacity
                       onPress={() => setDefault(vehicle.id)}
