@@ -1,6 +1,6 @@
 import { FuelType, RouteEstimate } from '@/types/models';
 import { logAppError } from './errorLogger';
-import { supabase } from './supabase';
+import { invokeMapFunction } from './mapFunctions';
 
 interface EstimateRouteInput {
   origin: string;
@@ -17,20 +17,20 @@ interface EstimateRouteResponse {
 }
 
 export async function estimateRoute(input: EstimateRouteInput): Promise<RouteEstimate> {
-  const { data, error } = await supabase.functions.invoke('route-estimate', {
-    body: input,
-  });
+  try {
+    const payload = await invokeMapFunction<EstimateRouteResponse>('route-estimate', input);
 
-  const payload = data as EstimateRouteResponse | null;
-  if (error || !payload?.data) {
-    const nextError = new Error(payload?.error || error?.message || 'Nao foi possivel calcular a rota.');
-    await logAppError('functions.route-estimate', nextError, {
+    if (!payload.data) {
+      throw new Error(payload.error || 'Não foi possível calcular a rota.');
+    }
+
+    return payload.data;
+  } catch (error) {
+    await logAppError('functions.route-estimate', error, {
       origin: input.origin,
       destination: input.destination,
       countryCode: input.countryCode || 'BR',
     });
-    throw nextError;
+    throw error;
   }
-
-  return payload.data;
 }

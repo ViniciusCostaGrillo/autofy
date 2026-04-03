@@ -6,56 +6,91 @@ import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
+type LoginMode = 'password' | 'otp';
+type OtpStep = 'email' | 'otp';
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { sendOtp, verifyOtp, signInAsAdmin, canUseLocalAdmin } = useAuth();
+  const { sendOtp, verifyOtp, signInWithPassword, signInAsAdmin, canUseLocalAdmin } = useAuth();
+  const [mode, setMode] = useState<LoginMode>('password');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [otpStep, setOtpStep] = useState<OtpStep>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSendOtp = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      setError('Digite um email valido');
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const validateEmail = () => {
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      setError('Digite um email válido.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handlePasswordLogin = async () => {
+    if (!validateEmail()) return;
+    if (!password.trim()) {
+      setError('Digite sua senha.');
       return;
     }
 
     setLoading(true);
     setError('');
-    const { error } = await sendOtp(email.trim().toLowerCase());
+    const { error: authError } = await signInWithPassword(normalizedEmail, password);
     setLoading(false);
 
-    if (error) setError('Nao foi possivel enviar o codigo. Tente novamente.');
-    else setStep('otp');
+    if (authError) {
+      setError('Email ou senha inválidos. Tente novamente.');
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!validateEmail()) return;
+
+    setLoading(true);
+    setError('');
+    const { error: authError } = await sendOtp(normalizedEmail);
+    setLoading(false);
+
+    if (authError) {
+      setError('Não foi possível enviar o código. Tente novamente.');
+      return;
+    }
+
+    setOtpStep('otp');
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.length !== 6) {
-      setError('Digite o codigo de 6 digitos');
+    if (otp.trim().length !== 6) {
+      setError('Digite o código de 6 dígitos.');
       return;
     }
 
     setLoading(true);
     setError('');
-    const { error } = await verifyOtp(email, otp.trim());
+    const { error: authError } = await verifyOtp(normalizedEmail, otp.trim());
     setLoading(false);
 
-    if (error) setError('Codigo invalido ou expirado. Tente novamente.');
+    if (authError) {
+      setError('Código inválido ou expirado. Tente novamente.');
+    }
   };
 
   const handleResendOtp = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      setError('Digite um email valido');
-      return;
-    }
+    if (!validateEmail()) return;
 
     setLoading(true);
     setError('');
-    const { error } = await sendOtp(email.trim().toLowerCase());
+    const { error: authError } = await sendOtp(normalizedEmail);
     setLoading(false);
 
-    if (error) setError('Nao foi possivel reenviar o codigo. Tente novamente.');
+    if (authError) {
+      setError('Não foi possível reenviar o código. Tente novamente.');
+    }
   };
 
   return (
@@ -95,35 +130,76 @@ export default function LoginScreen() {
         ) : null}
 
         <View className="bg-surface rounded-3xl p-6 border border-surfaceLight">
-          {step === 'email' ? (
+          <View className="flex-row gap-3 mb-6">
+            <Button
+              label="Senha"
+              onPress={() => {
+                setMode('password');
+                setError('');
+              }}
+              variant={mode === 'password' ? 'primary' : 'ghost'}
+              className="flex-1"
+            />
+            <Button
+              label="Código"
+              onPress={() => {
+                setMode('otp');
+                setError('');
+              }}
+              variant={mode === 'otp' ? 'primary' : 'ghost'}
+              className="flex-1"
+            />
+          </View>
+
+          <Text className="text-textMain font-black text-2xl tracking-tight mb-1">Bem-vindo</Text>
+          <Text className="text-textMuted font-medium mb-6">
+            {mode === 'password' ? 'Entre com email e senha.' : 'Entre com código enviado por email.'}
+          </Text>
+
+          <Input
+            label="Email"
+            placeholder="seu@email.com"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError('');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            error={error}
+          />
+
+          {mode === 'password' ? (
             <>
-              <Text className="text-textMain font-black text-2xl tracking-tight mb-1">Bem-vindo</Text>
-              <Text className="text-textMuted font-medium mb-6">Entre com seu email para continuar</Text>
               <Input
-                label="Email"
-                placeholder="seu@email.com"
-                value={email}
+                label="Senha"
+                placeholder="Sua senha"
+                value={password}
                 onChangeText={(text) => {
-                  setEmail(text);
+                  setPassword(text);
                   setError('');
                 }}
-                keyboardType="email-address"
+                secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
+                autoComplete="password"
+                textContentType="password"
                 returnKeyType="done"
-                error={error}
               />
-              <Button label="Enviar codigo" onPress={handleSendOtp} isLoading={loading} className="mt-2" />
+              <Button label="Entrar com senha" onPress={handlePasswordLogin} isLoading={loading} className="mt-2" />
             </>
+          ) : otpStep === 'email' ? (
+            <Button label="Enviar código" onPress={handleSendOtp} isLoading={loading} className="mt-2" />
           ) : (
             <>
-              <Text className="text-textMain font-black text-2xl tracking-tight mb-1">Verifique o email</Text>
-              <Text className="text-textMuted font-medium mb-1">Digite o codigo enviado para</Text>
-              <Text className="text-primary font-black text-base mb-6">{email}</Text>
+              <Text className="text-textMuted font-medium mb-1">Digite o código enviado para</Text>
+              <Text className="text-primary font-black text-base mb-6">{normalizedEmail}</Text>
               <Input
-                label="Codigo de verificacao"
+                label="Código de verificação"
                 placeholder="000000"
                 value={otp}
                 onChangeText={(text) => {
@@ -133,19 +209,14 @@ export default function LoginScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 returnKeyType="done"
-                error={error}
               />
-              <Button label="Entrar" onPress={handleVerifyOtp} isLoading={loading} className="mt-2 mb-4" />
-              <TouchableOpacity
-                onPress={handleResendOtp}
-                className="items-center py-2 mb-2"
-                disabled={loading}
-              >
-                <Text className="text-primary font-bold">Reenviar codigo</Text>
+              <Button label="Entrar com código" onPress={handleVerifyOtp} isLoading={loading} className="mt-2 mb-4" />
+              <TouchableOpacity onPress={handleResendOtp} className="items-center py-2 mb-2" disabled={loading}>
+                <Text className="text-primary font-bold">Reenviar código</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  setStep('email');
+                  setOtpStep('email');
                   setOtp('');
                   setError('');
                 }}

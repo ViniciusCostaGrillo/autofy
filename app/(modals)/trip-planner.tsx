@@ -14,7 +14,6 @@ import { estimateRoute } from '@/lib/routeEstimate';
 import { FuelType, RouteEstimate } from '@/types/models';
 import { usePreferences } from '@/lib/PreferencesContext';
 import { searchRoutePlaces } from '@/lib/routePlaces';
-import { useAuth } from '@/lib/AuthContext';
 import { logAppError } from '@/lib/errorLogger';
 import {
   calculateRequiredLiters,
@@ -43,9 +42,7 @@ export default function NewTripModal() {
   const { vehicles } = useVehicles();
   const { addTrip } = useTrips();
   const { preferences, t } = usePreferences();
-  const { session, isLocalAdmin } = useAuth();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
-  const canUseAutomaticRouteServices = Boolean(session?.access_token) && !isLocalAdmin;
   const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
     defaultPricingFuelType(defaultVehicle?.fuelType)
   );
@@ -85,13 +82,8 @@ export default function NewTripModal() {
       return;
     }
 
-    if (!canUseAutomaticRouteServices) {
-      setPlaceSuggestions([]);
-      return;
-    }
-
     const value = getValues(focusedField)?.trim();
-    if (!value || value.length < 2) {
+    if (!value || value.length < 1) {
       setPlaceSuggestions([]);
       return;
     }
@@ -108,26 +100,14 @@ export default function NewTripModal() {
           }).catch(() => undefined);
           setPlaceSuggestions([]);
         });
-    }, 300);
+    }, 180);
 
     return () => clearTimeout(timeout);
-  }, [
-    canUseAutomaticRouteServices,
-    focusedField,
-    getValues,
-    preferences.countryCode,
-    watchedDestination,
-    watchedOrigin,
-  ]);
+  }, [focusedField, getValues, preferences.countryCode, watchedDestination, watchedOrigin]);
 
   const handleAutoEstimate = async () => {
     if (!defaultVehicle) {
       setSubmitError('Cadastre um veículo antes de planejar uma viagem.');
-      return;
-    }
-
-    if (!canUseAutomaticRouteServices) {
-      setSubmitError('O cálculo automático exige login por email. No modo admin de teste, informe a distância manualmente.');
       return;
     }
 
@@ -163,10 +143,8 @@ export default function NewTripModal() {
         origin,
         destination,
         countryCode: preferences.countryCode,
-        isLocalAdmin,
       });
-      const message =
-        error instanceof Error ? error.message : 'Não foi possível buscar a distância automática.';
+      const message = error instanceof Error ? error.message : 'Não foi possível buscar a distância automática.';
       setSubmitError(message);
     } finally {
       setEstimating(false);
@@ -219,7 +197,7 @@ export default function NewTripModal() {
     setSaving(false);
 
     if (saveResult.error) {
-      setSubmitError('Nao foi possivel salvar a viagem. Tente novamente.');
+      setSubmitError('Não foi possível salvar a viagem. Tente novamente.');
       return;
     }
 
@@ -242,7 +220,7 @@ export default function NewTripModal() {
         {!result ? (
           <>
             <View className="mb-6 p-4 bg-surface rounded-3xl border border-surfaceLight">
-      <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
+              <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
                 Veículo selecionado
               </Text>
               <Text className="text-textMain font-black text-lg tracking-tight">
@@ -265,21 +243,31 @@ export default function NewTripModal() {
                   value={value}
                   onChangeText={onChange}
                   onFocus={() => setFocusedField('origin')}
+                  onBlur={() => {
+                    setTimeout(() => setFocusedField((current) => (current === 'origin' ? null : current)), 180);
+                  }}
                   error={errors.origin?.message}
                   leftIcon={<Navigation size={20} color="#B3B3B3" />}
                 />
               )}
             />
+
             <Controller
               control={control}
               name="destination"
               render={({ field: { onChange, value } }) => (
                 <Input
                   label="Destino"
-                  placeholder="Ex: Foz do Iguacu, PR"
+                  placeholder="Ex: Foz do Iguaçu, PR"
                   value={value}
                   onChangeText={onChange}
                   onFocus={() => setFocusedField('destination')}
+                  onBlur={() => {
+                    setTimeout(
+                      () => setFocusedField((current) => (current === 'destination' ? null : current)),
+                      180
+                    );
+                  }}
                   error={errors.destination?.message}
                   leftIcon={<MapPin size={20} color="#1DB954" />}
                 />
@@ -287,10 +275,10 @@ export default function NewTripModal() {
             />
 
             {focusedField && placeSuggestions.length > 0 ? (
-              <View className="mb-4 mt-[-10px] rounded-3xl border border-surfaceLight bg-surface overflow-hidden">
-                {placeSuggestions.map((suggestion) => (
+              <View className="mb-4 mt-[-10px] rounded-3xl border border-surfaceLight bg-surface overflow-hidden max-h-72">
+                {placeSuggestions.map((suggestion, index) => (
                   <Pressable
-                    key={`${focusedField}-${suggestion.label}`}
+                    key={`${focusedField}-${suggestion.label}-${index}`}
                     onPress={() => {
                       setValue(focusedField, suggestion.label, { shouldValidate: true });
                       setPlaceSuggestions([]);
@@ -302,12 +290,6 @@ export default function NewTripModal() {
                   </Pressable>
                 ))}
               </View>
-            ) : null}
-
-            {!canUseAutomaticRouteServices ? (
-              <Text className="text-textMuted text-xs mb-4 px-1">
-                Busca automática de rota disponível apenas para contas autenticadas por email.
-              </Text>
             ) : null}
 
             {defaultVehicle?.fuelType === 'flex' ? (
@@ -329,35 +311,20 @@ export default function NewTripModal() {
                     />
                   ))}
                 </View>
-                <Text className="text-textMuted text-xs mt-3 px-1">
-                  {t('trip.autoFuelFlexHint')}
-                </Text>
+                <Text className="text-textMuted text-xs mt-3 px-1">{t('trip.autoFuelFlexHint')}</Text>
               </View>
             ) : defaultVehicle?.fuelType === 'diesel' ? (
-              <Text className="text-textMuted text-xs mb-4 px-1">
-                {t('trip.autoFuelDieselHint')}
-              </Text>
+              <Text className="text-textMuted text-xs mb-4 px-1">{t('trip.autoFuelDieselHint')}</Text>
             ) : defaultVehicle?.fuelType === 'ethanol' ? (
-              <Text className="text-textMuted text-xs mb-4 px-1">
-                {t('trip.autoFuelEthanolHint')}
-              </Text>
+              <Text className="text-textMuted text-xs mb-4 px-1">{t('trip.autoFuelEthanolHint')}</Text>
             ) : defaultVehicle?.fuelType === 'gasoline' || defaultVehicle?.fuelType === 'hybrid' ? (
-              <Text className="text-textMuted text-xs mb-4 px-1">
-                {t('trip.autoFuelGasolineHint')}
-              </Text>
+              <Text className="text-textMuted text-xs mb-4 px-1">{t('trip.autoFuelGasolineHint')}</Text>
             ) : null}
 
             <Button
-              label={
-                !canUseAutomaticRouteServices
-                  ? 'Faça login por email para usar'
-                  : estimating
-                    ? 'Buscando rota...'
-                    : 'Buscar distância e preço médio'
-              }
+              label={estimating ? 'Buscando rota...' : 'Buscar distância e preço médio'}
               onPress={handleAutoEstimate}
               isLoading={estimating}
-              disabled={!canUseAutomaticRouteServices}
               className="mb-4"
             />
 
@@ -469,20 +436,14 @@ export default function NewTripModal() {
               </Text>
               <View className="flex-row justify-between pt-4 border-t border-white/20">
                 <View>
-                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">
-                    Por passageiro
-                  </Text>
+                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Por passageiro</Text>
                   <Text className="text-white font-black text-xl mt-1">
                     {formatCurrency(result.totalCost / result.passengers)}
                   </Text>
                 </View>
                 <View className="items-end">
-                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">
-                    Combustível
-                  </Text>
-                  <Text className="text-white font-black text-xl mt-1">
-                    {result.requiredLiters.toFixed(2)} L
-                  </Text>
+                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Combustível</Text>
+                  <Text className="text-white font-black text-xl mt-1">{result.requiredLiters.toFixed(2)} L</Text>
                 </View>
               </View>
             </View>

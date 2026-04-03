@@ -47,7 +47,7 @@ export async function logAppError(
     metadata,
   };
 
-  console.error(`[${source}]`, error, metadata || {});
+  console.warn(`[${source}]`, message, metadata || {});
 
   const existing = await readLogs();
   await writeLogs([nextLog, ...existing].slice(0, MAX_ERROR_LOGS));

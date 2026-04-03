@@ -1,5 +1,3 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -25,29 +23,28 @@ Deno.serve(async (request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  try {
-    const authErrorResponse = await requireAuthenticatedUser(request);
-    if (authErrorResponse) {
-      return authErrorResponse;
-    }
+  if (request.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed.' }, 405);
+  }
 
+  try {
     const openRouteServiceApiKey = Deno.env.get('OPENROUTESERVICE_API_KEY');
     if (!openRouteServiceApiKey) {
-      return jsonResponse({ error: 'OPENROUTESERVICE_API_KEY nao configurada.' }, 500);
+      return jsonResponse({ error: 'Serviço de rotas não configurado.' }, 500);
     }
 
     const body = (await request.json()) as SearchPlacesRequest;
-    const query = body.query?.trim();
-    const countryCode = (body.countryCode || 'BR').toUpperCase();
+    const query = sanitizeQuery(body.query);
+    const countryCode = sanitizeCountryCode(body.countryCode);
 
-    if (!query || query.length < 2) {
+    if (query.length < 1) {
       return jsonResponse({ data: [] });
     }
 
     const url = new URL('https://api.openrouteservice.org/geocode/autocomplete');
     url.searchParams.set('api_key', openRouteServiceApiKey);
     url.searchParams.set('text', query);
-    url.searchParams.set('size', '5');
+    url.searchParams.set('size', '8');
     url.searchParams.set('boundary.country', countryCode);
     url.searchParams.set('lang', countryCode === 'BR' ? 'pt-BR' : countryCode === 'ES' ? 'es' : 'en');
 
@@ -80,40 +77,17 @@ Deno.serve(async (request) => {
   }
 });
 
-async function requireAuthenticatedUser(request: Request) {
-  const authorization = request.headers.get('Authorization');
-  if (!authorization?.startsWith('Bearer ')) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
-  }
+function sanitizeQuery(value: unknown) {
+  return `${value || ''}`.replace(/\s+/g, ' ').trim().slice(0, 80);
+}
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return jsonResponse({ error: 'Supabase auth env vars missing.' }, 500);
-  }
+function sanitizeCountryCode(value: unknown) {
+  const normalized = `${value || 'BR'}`
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 2);
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: authorization,
-      },
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
-  }
-
-  return null;
+  return normalized || 'BR';
 }
 
 function firstString(...values: unknown[]) {

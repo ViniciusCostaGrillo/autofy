@@ -39,48 +39,55 @@ export default function PreferencesSetupScreen() {
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{
-        paddingTop: insets.top + 24,
-        paddingBottom: Math.max(insets.bottom, 24) + 24,
-        paddingHorizontal: 24,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text className="text-textMain text-4xl font-black tracking-tighter mb-3">{t('setup.title')}</Text>
-      <Text className="text-textMuted text-base font-medium mb-8">{t('setup.subtitle')}</Text>
+    <View className="flex-1 bg-background">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingTop: insets.top + 24,
+          paddingBottom: 144,
+          paddingHorizontal: 24,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="text-textMain text-4xl font-black tracking-tighter mb-3">{t('setup.title')}</Text>
+        <Text className="text-textMuted text-base font-medium mb-8">{t('setup.subtitle')}</Text>
 
-      <OptionGroup
-        title={t('setup.language')}
-        options={languageOptions.map((item) => ({ value: item.value, label: item.label }))}
-        selected={language}
-        onSelect={(value) => setLanguage(value as AppLanguage)}
-      />
+        <OptionGroup
+          title={t('setup.language')}
+          options={languageOptions.map((item) => ({ value: item.value, label: item.label }))}
+          selected={language}
+          onSelect={(value) => setLanguage(value as AppLanguage)}
+        />
 
-      <OptionGroup
-        title={t('setup.country')}
-        options={countryOptions.map((item) => ({ value: item.value, label: item.label }))}
-        selected={countryCode}
-        onSelect={setCountryCode}
-      />
+        <OptionGroup
+          title={t('setup.country')}
+          options={countryOptions.map((item) => ({ value: item.value, label: item.label }))}
+          selected={countryCode}
+          onSelect={setCountryCode}
+        />
 
-      <OptionGroup
-        title={t('setup.unitSystem')}
-        options={unitSystemOptions.map((item) => ({ value: item.value, label: t(item.key) }))}
-        selected={unitSystem}
-        onSelect={(value) => setUnitSystem(value as UnitSystem)}
-      />
+        <OptionGroup
+          title={t('setup.unitSystem')}
+          options={unitSystemOptions.map((item) => ({ value: item.value, label: t(item.key) }))}
+          selected={unitSystem}
+          onSelect={(value) => setUnitSystem(value as UnitSystem)}
+        />
 
-      <OptionGroup
-        title={t('setup.consumptionUnit')}
-        options={consumptionUnitOptions.map((item) => ({ value: item.value, label: t(item.key) }))}
-        selected={consumptionUnit}
-        onSelect={(value) => setConsumptionUnit(value as ConsumptionUnit)}
-      />
+        <OptionGroup
+          title={t('setup.consumptionUnit')}
+          options={consumptionUnitOptions.map((item) => ({ value: item.value, label: t(item.key) }))}
+          selected={consumptionUnit}
+          onSelect={(value) => setConsumptionUnit(value as ConsumptionUnit)}
+        />
+      </ScrollView>
 
-      <Button label={t('setup.finish')} onPress={handleFinish} className="mt-6" />
-    </ScrollView>
+      <View
+        className="absolute left-0 right-0 bottom-0 bg-background border-t border-surfaceLight px-6 pt-4"
+        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+      >
+        <Button label={t('setup.finish')} onPress={handleFinish} />
+      </View>
+    </View>
   );
 }
 

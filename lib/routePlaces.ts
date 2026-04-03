@@ -1,5 +1,5 @@
 import { logAppError } from './errorLogger';
-import { supabase } from './supabase';
+import { invokeMapFunction } from './mapFunctions';
 
 interface SearchPlacesResponse {
   data?: Array<{
@@ -11,19 +11,18 @@ interface SearchPlacesResponse {
 }
 
 export async function searchRoutePlaces(query: string, countryCode = 'BR') {
-  const { data, error } = await supabase.functions.invoke('route-places', {
-    body: { query, countryCode },
-  });
-
-  const payload = data as SearchPlacesResponse | null;
-  if (error) {
-    const nextError = new Error(payload?.error || error.message || 'Nao foi possivel buscar lugares.');
-    await logAppError('functions.route-places', nextError, {
+  try {
+    const payload = await invokeMapFunction<SearchPlacesResponse>('route-places', {
       query,
       countryCode,
     });
-    throw nextError;
-  }
 
-  return payload?.data || [];
+    return payload.data || [];
+  } catch (error) {
+    await logAppError('functions.route-places', error, {
+      query,
+      countryCode,
+    });
+    throw error;
+  }
 }
