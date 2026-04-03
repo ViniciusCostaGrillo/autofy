@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { getUpcomingOilAlert } from '@/lib/oil';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const hasSkippedInitialFocusRefresh = useRef(false);
   const { vehicles, loading: vehiclesLoading, refetch: refetchVehicles } = useVehicles();
   const { refuels, loading: refuelsLoading, refetch: refetchRefuels } = useRefuels();
   const { oilChanges, refetch: refetchOilChanges } = useOilChanges();
@@ -26,14 +27,20 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      refetchVehicles().catch((error) => {
-        console.error('Failed to refresh dashboard vehicles', error);
-      });
-      refetchRefuels().catch((error) => {
-        console.error('Failed to refresh dashboard refuels', error);
-      });
-      refetchOilChanges().catch((error) => {
-        console.error('Failed to refresh dashboard oil changes', error);
+      if (!hasSkippedInitialFocusRefresh.current) {
+        hasSkippedInitialFocusRefresh.current = true;
+        return;
+      }
+
+      Promise.allSettled([refetchVehicles(), refetchRefuels(), refetchOilChanges()]).then((results) => {
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            return;
+          }
+
+          const source = ['vehicles', 'refuels', 'oil changes'][index];
+          console.error(`Failed to refresh dashboard ${source}`, result.reason);
+        });
       });
     }, [refetchOilChanges, refetchRefuels, refetchVehicles])
   );

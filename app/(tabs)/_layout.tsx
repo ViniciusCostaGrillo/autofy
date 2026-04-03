@@ -15,7 +15,6 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#B3B3B3',
         tabBarHideOnKeyboard: true,
         lazy: true,
-        freezeOnBlur: true,
         headerShown: true,
         sceneStyle: {
           backgroundColor: '#121212',
