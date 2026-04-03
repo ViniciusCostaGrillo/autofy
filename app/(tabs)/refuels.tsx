@@ -1,15 +1,17 @@
 import React, { useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Fuel, Plus } from 'lucide-react-native';
+import { Fuel, Plus, Trash2 } from 'lucide-react-native';
 import { useRefuels } from '@/hooks/useRefuels';
-import { formatCurrency } from '@/utils/calculations';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { usePreferences } from '@/lib/PreferencesContext';
+import { formatCurrencyForPreferences, formatDistanceForPreferences } from '@/lib/formatting';
 
 export default function RefuelsScreen() {
   const insets = useSafeAreaInsets();
-  const { refuels, loading, refetch } = useRefuels();
+  const { refuels, loading, refetch, deleteRefuel } = useRefuels();
+  const { preferences, t } = usePreferences();
 
   useFocusEffect(
     useCallback(() => {
@@ -18,6 +20,19 @@ export default function RefuelsScreen() {
       });
     }, [refetch])
   );
+
+  const handleDelete = (id: string) => {
+    Alert.alert(t('common.delete'), t('common.remove'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          await deleteRefuel(id);
+        },
+      },
+    ]);
+  };
 
   return (
     <ScrollView
@@ -62,16 +77,23 @@ export default function RefuelsScreen() {
                       {refuel.gasStation || 'Posto desconhecido'}
                     </Text>
                     <Text className="text-textMuted text-xs font-medium mt-0.5">
-                      Odometro: {refuel.odometer.toLocaleString()} km
+                      Odometro: {formatDistanceForPreferences(refuel.odometer, preferences)}
                     </Text>
                   </View>
                 </View>
-                <Text className="text-xl font-black text-primary">{formatCurrency(refuel.totalPrice)}</Text>
+                <View className="items-end">
+                  <Text className="text-xl font-black text-primary">
+                    {formatCurrencyForPreferences(refuel.totalPrice, preferences)}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleDelete(refuel.id)} hitSlop={10} className="mt-2">
+                    <Trash2 size={16} color="#E91429" />
+                  </TouchableOpacity>
+                </View>
               </View>
               <View className="flex-row justify-between">
                 <Text className="text-textMuted font-medium text-sm">{refuel.liters.toFixed(1)} L</Text>
                 <Text className="text-textMuted font-medium text-sm">
-                  {formatCurrency(refuel.pricePerLiter)}/L
+                  {formatCurrencyForPreferences(refuel.pricePerLiter, preferences)}/L
                 </Text>
                 <Text className="text-textMuted font-medium text-sm">
                   {new Date(refuel.date).toLocaleDateString('pt-BR')}

@@ -9,6 +9,7 @@ interface EstimateRouteRequest {
   avgConsumptionKmL: number;
   fuelType: 'gasoline' | 'ethanol' | 'diesel' | 'flex' | 'electric' | 'hybrid';
   pricingFuelType?: 'gasoline' | 'ethanol' | 'diesel';
+  countryCode?: string;
 }
 
 interface OpenRouteFeature {
@@ -80,18 +81,22 @@ Deno.serve(async (request) => {
       return jsonResponse({ error: 'Consumo medio invalido.' }, 400);
     }
 
-    const originLookup = await geocodePlace(openRouteServiceApiKey, body.origin.trim());
-    const destinationLookup = await geocodePlace(openRouteServiceApiKey, body.destination.trim());
+    const countryCode = (body.countryCode || 'BR').toUpperCase();
+    const originLookup = await geocodePlace(openRouteServiceApiKey, body.origin.trim(), countryCode);
+    const destinationLookup = await geocodePlace(openRouteServiceApiKey, body.destination.trim(), countryCode);
     const route = await fetchRoute(
       openRouteServiceApiKey,
       originLookup.coordinates,
       destinationLookup.coordinates
     );
-    const fuelSuggestion = await getRegionalFuelSuggestion(
-      resolvePricingFuelType(body.fuelType, body.pricingFuelType),
-      originLookup.city || extractCityFromInput(body.origin),
-      originLookup.state || extractStateFromInput(body.origin)
-    );
+    const fuelSuggestion =
+      countryCode === 'BR'
+        ? await getRegionalFuelSuggestion(
+            resolvePricingFuelType(body.fuelType, body.pricingFuelType),
+            originLookup.city || extractCityFromInput(body.origin),
+            originLookup.state || extractStateFromInput(body.origin)
+          )
+        : null;
 
     const distanceKm = roundTo(route.distanceMeters / 1000, 1);
     const durationMinutes = Math.max(1, Math.round(route.durationSeconds / 60));
@@ -127,12 +132,12 @@ Deno.serve(async (request) => {
   }
 });
 
-async function geocodePlace(apiKey: string, query: string) {
+async function geocodePlace(apiKey: string, query: string, countryCode: string) {
   const url = new URL('https://api.openrouteservice.org/geocode/search');
   url.searchParams.set('api_key', apiKey);
   url.searchParams.set('text', query);
   url.searchParams.set('size', '1');
-  url.searchParams.set('boundary.country', 'BR');
+  url.searchParams.set('boundary.country', countryCode);
   url.searchParams.set('lang', 'pt-BR');
 
   const response = await fetch(url);

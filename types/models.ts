@@ -6,6 +6,18 @@ export interface User {
 }
 
 export type FuelType = 'gasoline' | 'ethanol' | 'diesel' | 'flex' | 'electric' | 'hybrid';
+export type AppLanguage = 'pt-BR' | 'en' | 'es';
+export type UnitSystem = 'metric' | 'imperial';
+export type ConsumptionUnit = 'km_l' | 'l_100km' | 'mpg_us' | 'mpg_uk';
+
+export interface AppPreferences {
+  onboardingCompleted: boolean;
+  language: AppLanguage;
+  countryCode: string;
+  unitSystem: UnitSystem;
+  consumptionUnit: ConsumptionUnit;
+  currencyCode: string;
+}
 
 export interface RouteEstimate {
   distanceKm: number;
@@ -72,6 +84,19 @@ export interface Trip {
   totalCost: number;
   roundTrip: boolean;
   passengers?: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface OilChange {
+  id: string;
+  userId: string;
+  vehicleId: string;
+  changedAt: string;
+  odometer: number;
+  oilName: string;
+  nextChangeDate?: string;
+  nextChangeOdometer?: number;
   notes?: string;
   createdAt: string;
 }

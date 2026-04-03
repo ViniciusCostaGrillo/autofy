@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Car, Plus } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { usePreferences } from '@/lib/PreferencesContext';
+import { formatConsumptionForPreferences, formatDistanceForPreferences } from '@/lib/formatting';
 
 const FUEL_LABELS: Record<string, string> = {
   gasoline: 'Gasolina',
@@ -27,6 +29,7 @@ const FUEL_COLORS: Record<string, string> = {
 export default function VehiclesScreen() {
   const insets = useSafeAreaInsets();
   const { vehicles, loading, refetch, setDefault } = useVehicles();
+  const { preferences } = usePreferences();
 
   useFocusEffect(
     useCallback(() => {
@@ -103,7 +106,7 @@ export default function VehiclesScreen() {
                         Consumo
                       </Text>
                       <Text className="text-textMain font-black text-lg">
-                        {vehicle.manualAvgConsumption} km/l
+                        {formatConsumptionForPreferences(vehicle.manualAvgConsumption, preferences)}
                       </Text>
                     </View>
                     <View className="flex-1 items-center">
@@ -111,7 +114,7 @@ export default function VehiclesScreen() {
                         Odometro
                       </Text>
                       <Text className="text-textMain font-black text-lg">
-                        {vehicle.currentOdometer.toLocaleString()} km
+                        {formatDistanceForPreferences(vehicle.currentOdometer, preferences)}
                       </Text>
                     </View>
                     <View className="flex-1 items-center">

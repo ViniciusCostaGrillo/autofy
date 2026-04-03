@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { PreferencesProvider, usePreferences } from '@/lib/PreferencesContext';
 
 export { ErrorBoundary } from 'expo-router';
 export const unstable_settings = { initialRouteName: '(tabs)' };
@@ -33,9 +34,11 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
+      <PreferencesProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </PreferencesProvider>
     </SafeAreaProvider>
   );
 }
@@ -53,11 +56,23 @@ const darkSpotifyTheme = {
 
 function RootLayoutNav() {
   const { session, loading } = useAuth();
+  const { preferences, loading: preferencesLoading } = usePreferences();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || preferencesLoading) return;
+
+    const inSetupGroup = segments[0] === '(setup)';
+    if (!preferences.onboardingCompleted && !inSetupGroup) {
+      router.replace('/(setup)/preferences');
+      return;
+    }
+
+    if (preferences.onboardingCompleted && inSetupGroup) {
+      router.replace(session ? '/(tabs)' : '/(auth)/login');
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
     if (!session && !inAuthGroup) {
@@ -65,9 +80,9 @@ function RootLayoutNav() {
     } else if (session && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [loading, router, segments, session]);
+  }, [loading, preferences.onboardingCompleted, preferencesLoading, router, segments, session]);
 
-  if (loading) {
+  if (loading || preferencesLoading) {
     return <View style={{ flex: 1, backgroundColor: '#121212' }} />;
   }
 
@@ -81,6 +96,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(setup)" options={{ headerShown: false }} />
         <Stack.Screen
           name="(modals)/new-trip"
           options={{
@@ -106,6 +122,16 @@ function RootLayoutNav() {
           options={{
             presentation: 'modal',
             title: 'Novo Veiculo',
+            headerStyle: { backgroundColor: '#1E1E1E' },
+            headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+            headerTintColor: '#1DB954',
+          }}
+        />
+        <Stack.Screen
+          name="(modals)/new-oil-change"
+          options={{
+            presentation: 'modal',
+            title: 'Troca de Oleo',
             headerStyle: { backgroundColor: '#1E1E1E' },
             headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
             headerTintColor: '#1DB954',

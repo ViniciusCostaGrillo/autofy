@@ -72,10 +72,15 @@ export default function NewVehicleModal() {
     const catalogEntry = findVehicleCatalogEntry(selectedBrand || '', model);
     if (!catalogEntry) return;
 
-    setSelectedFuel(catalogEntry.fuelType);
-    setValue('manualAvgConsumption', catalogEntry.recommendedConsumptionKmL.toFixed(1), {
-      shouldValidate: true,
-    });
+    if (catalogEntry.fuelType) {
+      setSelectedFuel(catalogEntry.fuelType);
+    }
+
+    if (catalogEntry.recommendedConsumptionKmL && catalogEntry.recommendedConsumptionKmL > 0) {
+      setValue('manualAvgConsumption', catalogEntry.recommendedConsumptionKmL.toFixed(1), {
+        shouldValidate: true,
+      });
+    }
   };
 
   const onSubmit = async (data: any) => {
@@ -210,13 +215,19 @@ export default function NewVehicleModal() {
           />
         )} />
 
-        {suggestedVehicle ? (
+        {suggestedVehicle?.recommendedConsumptionKmL ? (
           <View className="mb-6 mt-[-10px] px-1">
             <Text className="text-primary text-sm font-bold">
               {suggestedVehicle.recommendationNote} {suggestedVehicle.recommendedConsumptionKmL.toFixed(1)} km/l
             </Text>
             <Text className="text-textMuted text-xs mt-1">
               Esse valor e apenas uma recomendacao inicial e pode ser editado manualmente.
+            </Text>
+          </View>
+        ) : suggestedVehicle ? (
+          <View className="mb-6 mt-[-10px] px-1">
+            <Text className="text-textMuted text-xs mt-1">
+              Modelo encontrado na lista brasileira. Preencha o consumo manualmente caso ainda nao exista recomendacao automatica.
             </Text>
           </View>
         ) : null}

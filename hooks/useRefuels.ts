@@ -109,5 +109,33 @@ export function useRefuels() {
     return { error: null };
   };
 
-  return { refuels, loading, refetch, addRefuel };
+  const deleteRefuel = async (id: string): Promise<MutationResult> => {
+    if (!session?.user?.id) {
+      return { error: new Error('User not authenticated') };
+    }
+
+    if (isLocalAdmin) {
+      try {
+        const existing = await getLocalRefuels();
+        await saveLocalRefuels(existing.filter((item) => item.id !== id));
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to delete local refuel'),
+        };
+      }
+    }
+
+    const { error } = await supabase.from('refuels').delete().eq('id', id).eq('user_id', session.user.id);
+
+    if (error) {
+      return { error };
+    }
+
+    await refetch();
+    return { error: null };
+  };
+
+  return { refuels, loading, refetch, addRefuel, deleteRefuel };
 }

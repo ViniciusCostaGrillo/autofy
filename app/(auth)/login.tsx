@@ -44,6 +44,20 @@ export default function LoginScreen() {
     if (error) setError('Codigo invalido ou expirado. Tente novamente.');
   };
 
+  const handleResendOtp = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      setError('Digite um email valido');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    const { error } = await sendOtp(email.trim().toLowerCase());
+    setLoading(false);
+
+    if (error) setError('Nao foi possivel reenviar o codigo. Tente novamente.');
+  };
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
@@ -104,7 +118,7 @@ export default function LoginScreen() {
           ) : (
             <>
               <Text className="text-textMain font-black text-2xl tracking-tight mb-1">Verifique o email</Text>
-              <Text className="text-textMuted font-medium mb-1">Codigo enviado para</Text>
+              <Text className="text-textMuted font-medium mb-1">Digite o codigo enviado para</Text>
               <Text className="text-primary font-black text-base mb-6">{email}</Text>
               <Input
                 label="Codigo de verificacao"
@@ -120,6 +134,13 @@ export default function LoginScreen() {
                 error={error}
               />
               <Button label="Entrar" onPress={handleVerifyOtp} isLoading={loading} className="mt-2 mb-4" />
+              <TouchableOpacity
+                onPress={handleResendOtp}
+                className="items-center py-2 mb-2"
+                disabled={loading}
+              >
+                <Text className="text-primary font-bold">Reenviar codigo</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setStep('email');

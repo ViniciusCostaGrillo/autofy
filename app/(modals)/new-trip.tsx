@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, Text, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { estimateRoute } from '@/lib/routeEstimate';
 import { FuelType, RouteEstimate } from '@/types/models';
+import { usePreferences } from '@/lib/PreferencesContext';
+import { searchRoutePlaces } from '@/lib/routePlaces';
 import {
   calculateRequiredLiters,
   calculateFuelCost,
@@ -38,12 +40,15 @@ export default function NewTripModal() {
   const insets = useSafeAreaInsets();
   const { vehicles } = useVehicles();
   const { addTrip } = useTrips();
+  const { preferences, t } = usePreferences();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
   const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
     defaultPricingFuelType(defaultVehicle?.fuelType)
   );
   const [result, setResult] = useState<any>(null);
   const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+  const [focusedField, setFocusedField] = useState<'origin' | 'destination' | null>(null);
+  const [placeSuggestions, setPlaceSuggestions] = useState<Array<{ label: string }>>([]);
   const [estimating, setEstimating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -53,6 +58,7 @@ export default function NewTripModal() {
     getValues,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(tripSchema),
@@ -65,6 +71,34 @@ export default function NewTripModal() {
       tollCost: '0',
     },
   });
+
+  const watchedOrigin = watch('origin');
+  const watchedDestination = watch('destination');
+
+  useEffect(() => {
+    if (!focusedField) {
+      setPlaceSuggestions([]);
+      return;
+    }
+
+    const value = getValues(focusedField)?.trim();
+    if (!value || value.length < 2) {
+      setPlaceSuggestions([]);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      searchRoutePlaces(value, preferences.countryCode)
+        .then((results) => {
+          setPlaceSuggestions(results);
+        })
+        .catch(() => {
+          setPlaceSuggestions([]);
+        });
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [focusedField, getValues, preferences.countryCode, watchedDestination, watchedOrigin]);
 
   const handleAutoEstimate = async () => {
     if (!defaultVehicle) {
@@ -90,6 +124,7 @@ export default function NewTripModal() {
         avgConsumptionKmL: defaultVehicle.manualAvgConsumption,
         fuelType: defaultVehicle.fuelType,
         pricingFuelType,
+        countryCode: preferences.countryCode,
       });
 
       setRouteEstimate(nextEstimate);
@@ -198,6 +233,7 @@ export default function NewTripModal() {
                   placeholder="Ex: Cascavel, PR"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => setFocusedField('origin')}
                   error={errors.origin?.message}
                   leftIcon={<Navigation size={20} color="#B3B3B3" />}
                 />
@@ -212,11 +248,30 @@ export default function NewTripModal() {
                   placeholder="Ex: Foz do Iguacu, PR"
                   value={value}
                   onChangeText={onChange}
+                  onFocus={() => setFocusedField('destination')}
                   error={errors.destination?.message}
                   leftIcon={<MapPin size={20} color="#1DB954" />}
                 />
               )}
             />
+
+            {focusedField && placeSuggestions.length > 0 ? (
+              <View className="mb-4 mt-[-10px] rounded-3xl border border-surfaceLight bg-surface overflow-hidden">
+                {placeSuggestions.map((suggestion) => (
+                  <Pressable
+                    key={`${focusedField}-${suggestion.label}`}
+                    onPress={() => {
+                      setValue(focusedField, suggestion.label, { shouldValidate: true });
+                      setPlaceSuggestions([]);
+                      setFocusedField(null);
+                    }}
+                    className="px-5 py-4 border-b border-surfaceLight"
+                  >
+                    <Text className="text-textMain font-bold">{suggestion.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
 
             {defaultVehicle?.fuelType === 'flex' ? (
               <View className="mb-4">
@@ -225,8 +280,8 @@ export default function NewTripModal() {
                 </Text>
                 <View className="flex-row gap-2">
                   {[
-                    { key: 'gasoline', label: 'Gasolina' },
-                    { key: 'ethanol', label: 'Etanol' },
+                    { key: 'gasoline', label: t('trip.autoFuelGasoline') },
+                    { key: 'ethanol', label: t('trip.autoFuelEthanol') },
                   ].map(({ key, label }) => (
                     <Button
                       key={key}
@@ -238,20 +293,20 @@ export default function NewTripModal() {
                   ))}
                 </View>
                 <Text className="text-textMuted text-xs mt-3 px-1">
-                  Para veiculo flex, escolha se a sugestao da ANP deve usar gasolina ou etanol.
+                  {t('trip.autoFuelFlexHint')}
                 </Text>
               </View>
             ) : defaultVehicle?.fuelType === 'diesel' ? (
               <Text className="text-textMuted text-xs mb-4 px-1">
-                A sugestao automatica usara diesel na base oficial da ANP.
+                {t('trip.autoFuelDieselHint')}
               </Text>
             ) : defaultVehicle?.fuelType === 'ethanol' ? (
               <Text className="text-textMuted text-xs mb-4 px-1">
-                A sugestao automatica usara etanol na base oficial da ANP.
+                {t('trip.autoFuelEthanolHint')}
               </Text>
             ) : defaultVehicle?.fuelType === 'gasoline' || defaultVehicle?.fuelType === 'hybrid' ? (
               <Text className="text-textMuted text-xs mb-4 px-1">
-                A sugestao automatica usara gasolina na base oficial da ANP.
+                {t('trip.autoFuelGasolineHint')}
               </Text>
             ) : null}
 

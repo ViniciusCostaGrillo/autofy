@@ -9,6 +9,7 @@ interface EstimateRouteInput {
   avgConsumptionKmL: number;
   fuelType: FuelType;
   pricingFuelType?: Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>;
+  countryCode?: string;
 }
 
 interface EstimateRouteResponse {

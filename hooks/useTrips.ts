@@ -126,5 +126,33 @@ export function useTrips() {
     return { error: null };
   };
 
-  return { trips, loading, refetch, addTrip };
+  const deleteTrip = async (id: string): Promise<MutationResult> => {
+    if (!session?.user?.id) {
+      return { error: new Error('User not authenticated') };
+    }
+
+    if (isLocalAdmin) {
+      try {
+        const existing = await getLocalTrips();
+        await saveLocalTrips(existing.filter((item) => item.id !== id));
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to delete local trip'),
+        };
+      }
+    }
+
+    const { error } = await supabase.from('trips').delete().eq('id', id).eq('user_id', session.user.id);
+
+    if (error) {
+      return { error };
+    }
+
+    await refetch();
+    return { error: null };
+  };
+
+  return { trips, loading, refetch, addTrip, deleteTrip };
 }

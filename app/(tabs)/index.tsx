@@ -5,15 +5,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Car, MapPin, Fuel, TrendingUp, LogOut } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useRefuels } from '@/hooks/useRefuels';
+import { useOilChanges } from '@/hooks/useOilChanges';
 import { useAuth } from '@/lib/AuthContext';
 import { StatCard } from '@/components/ui/StatCard';
-import { formatCurrency } from '@/utils/calculations';
+import { usePreferences } from '@/lib/PreferencesContext';
+import {
+  formatConsumptionForPreferences,
+  formatCurrencyForPreferences,
+  formatDistanceForPreferences,
+} from '@/lib/formatting';
+import { getUpcomingOilAlert } from '@/lib/oil';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { vehicles, loading: vehiclesLoading, refetch: refetchVehicles } = useVehicles();
   const { refuels, loading: refuelsLoading, refetch: refetchRefuels } = useRefuels();
+  const { oilChanges, refetch: refetchOilChanges } = useOilChanges();
   const { signOut } = useAuth();
+  const { preferences, t } = usePreferences();
 
   useFocusEffect(
     useCallback(() => {
@@ -23,7 +32,10 @@ export default function DashboardScreen() {
       refetchRefuels().catch((error) => {
         console.error('Failed to refresh dashboard refuels', error);
       });
-    }, [refetchRefuels, refetchVehicles])
+      refetchOilChanges().catch((error) => {
+        console.error('Failed to refresh dashboard oil changes', error);
+      });
+    }, [refetchOilChanges, refetchRefuels, refetchVehicles])
   );
 
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
@@ -39,6 +51,7 @@ export default function DashboardScreen() {
   })();
 
   const loading = vehiclesLoading || refuelsLoading;
+  const oilAlert = getUpcomingOilAlert(oilChanges, defaultVehicle);
 
   return (
     <View className="flex-1 bg-background">
@@ -102,12 +115,12 @@ export default function DashboardScreen() {
         <View className="flex-row gap-4 mb-6">
           <StatCard
             title="Consumo medio"
-            value={defaultVehicle ? `${defaultVehicle.manualAvgConsumption} km/l` : '--'}
+            value={defaultVehicle ? formatConsumptionForPreferences(defaultVehicle.manualAvgConsumption, preferences) : '--'}
             icon={<TrendingUp size={16} color="#1DB954" />}
           />
           <StatCard
             title="Gasto total"
-            value={totalSpent > 0 ? formatCurrency(totalSpent) : 'R$ 0,00'}
+            value={totalSpent > 0 ? formatCurrencyForPreferences(totalSpent, preferences) : formatCurrencyForPreferences(0, preferences)}
             icon={<Fuel size={16} color="#E91429" />}
           />
         </View>
@@ -119,7 +132,7 @@ export default function DashboardScreen() {
                 Estimativa de custo por km
               </Text>
               <Text className="text-white text-4xl font-black tracking-tighter">
-                {estimatedCostPerKm ? formatCurrency(estimatedCostPerKm) : '--'}
+                {estimatedCostPerKm ? formatCurrencyForPreferences(estimatedCostPerKm, preferences) : '--'}
               </Text>
               {!estimatedCostPerKm ? (
                 <Text className="text-white/50 text-xs mt-1">Registre um abastecimento</Text>
@@ -130,6 +143,28 @@ export default function DashboardScreen() {
             </View>
           </View>
         </View>
+
+        {oilAlert ? (
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/oil')}
+            className={`mb-6 rounded-3xl p-5 border-2 ${
+              oilAlert.dueByDate || oilAlert.dueByKm ? 'bg-danger/10 border-danger' : 'bg-primary/10 border-primary'
+            }`}
+          >
+            <Text className={`font-black text-lg ${oilAlert.dueByDate || oilAlert.dueByKm ? 'text-danger' : 'text-primary'}`}>
+              {oilAlert.dueByDate || oilAlert.dueByKm ? t('oil.alertDue') : t('oil.alertSoon')}
+            </Text>
+            <Text className="text-textMuted mt-2">
+              {oilAlert.oilChange.oilName}
+              {oilAlert.remainingKm !== null ? ` • ${formatDistanceForPreferences(oilAlert.remainingKm, preferences)} restantes` : ''}
+            </Text>
+            {oilAlert.oilChange.nextChangeDate ? (
+              <Text className="text-textMuted mt-1">
+                {t('oil.nextByDate')}: {new Date(oilAlert.oilChange.nextChangeDate).toLocaleDateString('pt-BR')}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
 
         <Text className="text-xl font-black tracking-tight text-textMain mb-5 ml-1">
           Acoes rapidas

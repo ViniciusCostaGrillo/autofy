@@ -1,10 +1,12 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, MapPin, Droplets, Car } from 'lucide-react-native';
+import { Home, MapPin, Droplets, Car, Wrench, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePreferences } from '@/lib/PreferencesContext';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { t } = usePreferences();
 
   return (
     <Tabs
@@ -41,29 +43,43 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: t('tabs.home'),
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="trips"
         options={{
-          title: 'Viagens',
+          title: t('tabs.trips'),
           tabBarIcon: ({ color }) => <MapPin size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="refuels"
         options={{
-          title: 'Historico',
+          title: t('tabs.refuels'),
           tabBarIcon: ({ color }) => <Droplets size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="oil"
+        options={{
+          title: t('tabs.oil'),
+          tabBarIcon: ({ color }) => <Wrench size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: 'Frota',
+          title: t('tabs.vehicles'),
           tabBarIcon: ({ color }) => <Car size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: t('tabs.settings'),
+          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />
     </Tabs>
