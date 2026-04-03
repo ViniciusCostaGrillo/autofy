@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppPreferences, OilChange, Refuel, Trip, Vehicle } from '@/types/models';
+import { AppPreferences, MaintenanceExpense, OilChange, Refuel, Trip, Vehicle } from '@/types/models';
 
 const KEYS = {
   vehicles: 'autofy.localAdmin.vehicles',
   trips: 'autofy.localAdmin.trips',
   refuels: 'autofy.localAdmin.refuels',
   oilChanges: 'autofy.oilChanges',
+  maintenanceExpenses: 'autofy.maintenanceExpenses',
   preferences: 'autofy.preferences',
 };
 
@@ -54,6 +55,14 @@ export async function getLocalOilChanges() {
 
 export async function saveLocalOilChanges(data: OilChange[]) {
   return writeList(KEYS.oilChanges, data);
+}
+
+export async function getLocalMaintenanceExpenses() {
+  return readList<MaintenanceExpense>(KEYS.maintenanceExpenses);
+}
+
+export async function saveLocalMaintenanceExpenses(data: MaintenanceExpense[]) {
+  return writeList(KEYS.maintenanceExpenses, data);
 }
 
 export async function getLocalPreferences() {

@@ -63,9 +63,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="oil"
+        name="maintenance"
         options={{
-          title: t('tabs.oil'),
+          title: t('tabs.maintenance'),
           tabBarIcon: ({ color }) => <Wrench size={24} color={color} />,
         }}
       />

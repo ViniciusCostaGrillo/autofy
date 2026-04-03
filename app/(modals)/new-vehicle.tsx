@@ -112,6 +112,8 @@ export default function NewVehicleModal() {
 
     if (isInitialVehicleFlow) {
       await updatePreferences({ initialVehicleCompleted: true });
+      router.replace('/(tabs)');
+      return;
     }
 
     router.back();

@@ -158,6 +158,16 @@ function RootLayoutNav() {
             headerTintColor: '#1DB954',
           }}
         />
+        <Stack.Screen
+          name="(modals)/new-maintenance-expense"
+          options={{
+            presentation: 'modal',
+            title: 'Novo Gasto',
+            headerStyle: { backgroundColor: '#1E1E1E' },
+            headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+            headerTintColor: '#1DB954',
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

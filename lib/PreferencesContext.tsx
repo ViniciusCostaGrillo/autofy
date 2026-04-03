@@ -1,12 +1,18 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AppLanguage, AppPreferences, ConsumptionUnit, UnitSystem } from '@/types/models';
+import {
+  AppLanguage,
+  AppPreferences,
+  ConsumptionUnit,
+  MaintenanceCategory,
+  UnitSystem,
+} from '@/types/models';
 import { getLocalPreferences, saveLocalPreferences } from '@/lib/localStore';
 
 type TranslationKey =
   | 'tabs.home'
   | 'tabs.trips'
   | 'tabs.refuels'
-  | 'tabs.oil'
+  | 'tabs.maintenance'
   | 'tabs.vehicles'
   | 'tabs.settings'
   | 'setup.title'
@@ -40,14 +46,39 @@ type TranslationKey =
   | 'common.save'
   | 'common.remove'
   | 'common.editable'
-  | 'oil.title'
-  | 'oil.emptyTitle'
-  | 'oil.emptyDescription'
-  | 'oil.new'
-  | 'oil.nextByDate'
-  | 'oil.nextByKm'
-  | 'oil.alertDue'
-  | 'oil.alertSoon';
+  | 'maintenance.title'
+  | 'maintenance.emptyTitle'
+  | 'maintenance.emptyDescription'
+  | 'maintenance.last30DaysTotal'
+  | 'maintenance.monthlyAverage'
+  | 'maintenance.nextOilAlert'
+  | 'maintenance.noUpcomingOil'
+  | 'maintenance.sectionOil'
+  | 'maintenance.sectionExpenses'
+  | 'maintenance.newExpense'
+  | 'maintenance.newOil'
+  | 'maintenance.nextByDate'
+  | 'maintenance.nextByKm'
+  | 'maintenance.alertDue'
+  | 'maintenance.alertSoon'
+  | 'maintenance.noExpenses'
+  | 'maintenance.noVehicle'
+  | 'maintenance.recurring'
+  | 'maintenance.recurringMonths'
+  | 'maintenance.recurringHint'
+  | 'maintenance.category'
+  | 'maintenance.titleField'
+  | 'maintenance.amount'
+  | 'maintenance.date'
+  | 'maintenance.notes'
+  | 'maintenance.saveExpense'
+  | 'maintenance.dashboardMonthly'
+  | 'maintenance.category.oil_change'
+  | 'maintenance.category.tires'
+  | 'maintenance.category.insurance'
+  | 'maintenance.category.parts'
+  | 'maintenance.category.service'
+  | 'maintenance.category.other';
 
 interface PreferencesContextType {
   preferences: AppPreferences;
@@ -84,7 +115,7 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'tabs.home': 'Início',
     'tabs.trips': 'Viagens',
     'tabs.refuels': 'Abastecimentos',
-    'tabs.oil': 'Óleo',
+    'tabs.maintenance': 'Manutenções',
     'tabs.vehicles': 'Frota',
     'tabs.settings': 'Configurações',
     'setup.title': 'Configure seu app',
@@ -118,20 +149,45 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'common.save': 'Salvar',
     'common.remove': 'Remover',
     'common.editable': 'Editável',
-    'oil.title': 'Troca de óleo',
-    'oil.emptyTitle': 'Nenhuma troca registrada',
-    'oil.emptyDescription': 'Registre a troca de óleo para receber alertas por data e odômetro.',
-    'oil.new': 'Nova troca',
-    'oil.nextByDate': 'Próxima troca por data',
-    'oil.nextByKm': 'Próxima troca por km',
-    'oil.alertDue': 'Troca de óleo vencida',
-    'oil.alertSoon': 'Troca de óleo próxima',
+    'maintenance.title': 'Manutenções/Gastos',
+    'maintenance.emptyTitle': 'Nenhuma manutenção registrada',
+    'maintenance.emptyDescription': 'Registre trocas de óleo e outros gastos para acompanhar o custo de manter o veículo.',
+    'maintenance.last30DaysTotal': 'Total 30 dias',
+    'maintenance.monthlyAverage': 'Média mensal',
+    'maintenance.nextOilAlert': 'Próxima troca de óleo',
+    'maintenance.noUpcomingOil': 'Nenhum alerta de óleo por enquanto',
+    'maintenance.sectionOil': 'Trocas de óleo',
+    'maintenance.sectionExpenses': 'Gastos de manutenção',
+    'maintenance.newExpense': 'Novo gasto',
+    'maintenance.newOil': 'Troca de óleo',
+    'maintenance.nextByDate': 'Próxima troca por data',
+    'maintenance.nextByKm': 'Próxima troca por km',
+    'maintenance.alertDue': 'Troca de óleo vencida',
+    'maintenance.alertSoon': 'Troca de óleo próxima',
+    'maintenance.noExpenses': 'Nenhum gasto de manutenção nos últimos registros.',
+    'maintenance.noVehicle': 'Cadastre um veículo para acompanhar manutenção e gastos.',
+    'maintenance.recurring': 'Gasto recorrente',
+    'maintenance.recurringMonths': 'Meses de cobertura',
+    'maintenance.recurringHint': 'Seguro e gastos recorrentes entram no custo mensal pelo valor rateado.',
+    'maintenance.category': 'Categoria',
+    'maintenance.titleField': 'Descrição',
+    'maintenance.amount': 'Valor',
+    'maintenance.date': 'Data',
+    'maintenance.notes': 'Observações',
+    'maintenance.saveExpense': 'Salvar gasto',
+    'maintenance.dashboardMonthly': 'Manutenção/mês',
+    'maintenance.category.oil_change': 'Troca de óleo',
+    'maintenance.category.tires': 'Pneus',
+    'maintenance.category.insurance': 'Seguro',
+    'maintenance.category.parts': 'Peças',
+    'maintenance.category.service': 'Revisão/serviço',
+    'maintenance.category.other': 'Outro',
   },
   en: {
     'tabs.home': 'Home',
     'tabs.trips': 'Trips',
     'tabs.refuels': 'Refuels',
-    'tabs.oil': 'Oil',
+    'tabs.maintenance': 'Maintenance',
     'tabs.vehicles': 'Fleet',
     'tabs.settings': 'Settings',
     'setup.title': 'Set up your app',
@@ -165,20 +221,45 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'common.save': 'Save',
     'common.remove': 'Remove',
     'common.editable': 'Editable',
-    'oil.title': 'Oil changes',
-    'oil.emptyTitle': 'No oil changes yet',
-    'oil.emptyDescription': 'Register an oil change to receive alerts by date and odometer.',
-    'oil.new': 'New oil change',
-    'oil.nextByDate': 'Next change by date',
-    'oil.nextByKm': 'Next change by mileage',
-    'oil.alertDue': 'Oil change overdue',
-    'oil.alertSoon': 'Oil change coming soon',
+    'maintenance.title': 'Maintenance/Costs',
+    'maintenance.emptyTitle': 'No maintenance records yet',
+    'maintenance.emptyDescription': 'Register oil changes and maintenance costs to track the real cost of keeping your vehicle.',
+    'maintenance.last30DaysTotal': 'Last 30 days',
+    'maintenance.monthlyAverage': 'Monthly average',
+    'maintenance.nextOilAlert': 'Next oil change',
+    'maintenance.noUpcomingOil': 'No oil alerts right now',
+    'maintenance.sectionOil': 'Oil changes',
+    'maintenance.sectionExpenses': 'Maintenance expenses',
+    'maintenance.newExpense': 'New expense',
+    'maintenance.newOil': 'Oil change',
+    'maintenance.nextByDate': 'Next change by date',
+    'maintenance.nextByKm': 'Next change by mileage',
+    'maintenance.alertDue': 'Oil change overdue',
+    'maintenance.alertSoon': 'Oil change coming soon',
+    'maintenance.noExpenses': 'No maintenance expenses yet.',
+    'maintenance.noVehicle': 'Add a vehicle to track maintenance and ownership costs.',
+    'maintenance.recurring': 'Recurring expense',
+    'maintenance.recurringMonths': 'Coverage months',
+    'maintenance.recurringHint': 'Insurance and recurring costs are converted into a monthly ownership cost.',
+    'maintenance.category': 'Category',
+    'maintenance.titleField': 'Description',
+    'maintenance.amount': 'Amount',
+    'maintenance.date': 'Date',
+    'maintenance.notes': 'Notes',
+    'maintenance.saveExpense': 'Save expense',
+    'maintenance.dashboardMonthly': 'Maintenance/month',
+    'maintenance.category.oil_change': 'Oil change',
+    'maintenance.category.tires': 'Tires',
+    'maintenance.category.insurance': 'Insurance',
+    'maintenance.category.parts': 'Parts',
+    'maintenance.category.service': 'Service',
+    'maintenance.category.other': 'Other',
   },
   es: {
     'tabs.home': 'Inicio',
     'tabs.trips': 'Viajes',
     'tabs.refuels': 'Cargas',
-    'tabs.oil': 'Aceite',
+    'tabs.maintenance': 'Mantenimiento',
     'tabs.vehicles': 'Flota',
     'tabs.settings': 'Configuración',
     'setup.title': 'Configura tu app',
@@ -204,7 +285,7 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'trip.autoFuelFlexHint': 'Para vehículos flex, elige si la sugerencia de la ANP debe usar gasolina o etanol.',
     'trip.autoFuelGasoline': 'Gasolina',
     'trip.autoFuelEthanol': 'Etanol',
-    'trip.autoFuelDieselHint': 'La sugerencia automática usará diesel de la base oficial de la ANP.',
+    'trip.autoFuelDieselHint': 'La sugerencia automática usará diésel de la base oficial de la ANP.',
     'trip.autoFuelEthanolHint': 'La sugerencia automática usará etanol de la base oficial de la ANP.',
     'trip.autoFuelGasolineHint': 'La sugerencia automática usará gasolina de la base oficial de la ANP.',
     'common.delete': 'Borrar',
@@ -212,14 +293,39 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'common.save': 'Guardar',
     'common.remove': 'Eliminar',
     'common.editable': 'Editable',
-    'oil.title': 'Cambios de aceite',
-    'oil.emptyTitle': 'Sin cambios registrados',
-    'oil.emptyDescription': 'Registra el cambio de aceite para recibir alertas por fecha y kilometraje.',
-    'oil.new': 'Nuevo cambio',
-    'oil.nextByDate': 'Próximo cambio por fecha',
-    'oil.nextByKm': 'Próximo cambio por km',
-    'oil.alertDue': 'Cambio de aceite vencido',
-    'oil.alertSoon': 'Cambio de aceite próximo',
+    'maintenance.title': 'Mantenimiento/Gastos',
+    'maintenance.emptyTitle': 'Sin mantenimientos registrados',
+    'maintenance.emptyDescription': 'Registra cambios de aceite y otros gastos para controlar el costo real del vehículo.',
+    'maintenance.last30DaysTotal': 'Total 30 días',
+    'maintenance.monthlyAverage': 'Promedio mensual',
+    'maintenance.nextOilAlert': 'Próximo cambio de aceite',
+    'maintenance.noUpcomingOil': 'Sin alertas de aceite por ahora',
+    'maintenance.sectionOil': 'Cambios de aceite',
+    'maintenance.sectionExpenses': 'Gastos de mantenimiento',
+    'maintenance.newExpense': 'Nuevo gasto',
+    'maintenance.newOil': 'Cambio de aceite',
+    'maintenance.nextByDate': 'Próximo cambio por fecha',
+    'maintenance.nextByKm': 'Próximo cambio por km',
+    'maintenance.alertDue': 'Cambio de aceite vencido',
+    'maintenance.alertSoon': 'Cambio de aceite próximo',
+    'maintenance.noExpenses': 'Todavía no hay gastos de mantenimiento.',
+    'maintenance.noVehicle': 'Agrega un vehículo para controlar mantenimiento y costos.',
+    'maintenance.recurring': 'Gasto recurrente',
+    'maintenance.recurringMonths': 'Meses de cobertura',
+    'maintenance.recurringHint': 'Seguro y gastos recurrentes se convierten en costo mensual del vehículo.',
+    'maintenance.category': 'Categoría',
+    'maintenance.titleField': 'Descripción',
+    'maintenance.amount': 'Valor',
+    'maintenance.date': 'Fecha',
+    'maintenance.notes': 'Notas',
+    'maintenance.saveExpense': 'Guardar gasto',
+    'maintenance.dashboardMonthly': 'Mantenimiento/mes',
+    'maintenance.category.oil_change': 'Cambio de aceite',
+    'maintenance.category.tires': 'Neumáticos',
+    'maintenance.category.insurance': 'Seguro',
+    'maintenance.category.parts': 'Piezas',
+    'maintenance.category.service': 'Servicio',
+    'maintenance.category.other': 'Otro',
   },
 };
 
@@ -273,6 +379,19 @@ export function usePreferences() {
 
 export function getCountryDefaults(countryCode: string) {
   return countryDefaults[countryCode] || countryDefaults.BR;
+}
+
+export function getMaintenanceCategoryLabels(
+  t: (key: TranslationKey) => string
+): Record<MaintenanceCategory, string> {
+  return {
+    oil_change: t('maintenance.category.oil_change'),
+    tires: t('maintenance.category.tires'),
+    insurance: t('maintenance.category.insurance'),
+    parts: t('maintenance.category.parts'),
+    service: t('maintenance.category.service'),
+    other: t('maintenance.category.other'),
+  };
 }
 
 export const languageOptions: { value: AppLanguage; label: string }[] = [

@@ -102,6 +102,29 @@ export interface OilChange {
   createdAt: string;
 }
 
+export type MaintenanceCategory =
+  | 'oil_change'
+  | 'tires'
+  | 'insurance'
+  | 'parts'
+  | 'service'
+  | 'other';
+
+export interface MaintenanceExpense {
+  id: string;
+  userId: string;
+  vehicleId: string;
+  category: MaintenanceCategory;
+  title: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  isRecurring: boolean;
+  recurrenceMonths?: number;
+  monthlyAmount: number;
+  createdAt: string;
+}
+
 export interface MonthlyReport {
   id: string;
   vehicleId: string;

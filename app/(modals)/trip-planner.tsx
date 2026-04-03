@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, Text, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,19 +23,36 @@ import {
 } from '@/utils/calculations';
 
 const tripSchema = z.object({
-  origin: z.string().min(2, 'Origem obrigatória'),
-  destination: z.string().min(2, 'Destino obrigatório'),
+  origin: z.string().min(2, 'Origem obrigatoria'),
+  destination: z.string().min(2, 'Destino obrigatorio'),
   distanceKm: z
     .string()
     .transform((value) => Number(value.replace(',', '.')))
-    .pipe(z.number().positive('Distância inválida')),
+    .pipe(z.number().positive('Distancia invalida')),
   passengers: z.string().optional().transform((value) => (value ? Number(value) : 1)),
   fuelPrice: z
     .string()
     .transform((value) => Number(value.replace(',', '.')))
-    .pipe(z.number().positive('Preço inválido')),
+    .pipe(z.number().positive('Preco invalido')),
   tollCost: z.string().optional().transform((value) => (value ? Number(value.replace(',', '.')) : 0)),
 });
+
+type RouteMode = 'one_way' | 'round_trip';
+
+interface TripCalculationResult {
+  origin: string;
+  destination: string;
+  distanceKm: number;
+  passengers: number;
+  fuelPrice: number;
+  tollCost: number;
+  routeMode: RouteMode;
+  avgConsumption: number;
+  requiredLiters: number;
+  fuelCost: number;
+  totalCost: number;
+  durationMinutes?: number;
+}
 
 export default function NewTripModal() {
   const insets = useSafeAreaInsets();
@@ -46,13 +63,15 @@ export default function NewTripModal() {
   const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
     defaultPricingFuelType(defaultVehicle?.fuelType)
   );
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TripCalculationResult | null>(null);
   const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+  const [routeMode, setRouteMode] = useState<RouteMode>('one_way');
   const [focusedField, setFocusedField] = useState<'origin' | 'destination' | null>(null);
   const [placeSuggestions, setPlaceSuggestions] = useState<Array<{ label: string }>>([]);
   const [estimating, setEstimating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const previousRouteMode = useRef<RouteMode>('one_way');
 
   const {
     control,
@@ -75,6 +94,37 @@ export default function NewTripModal() {
 
   const watchedOrigin = watch('origin');
   const watchedDestination = watch('destination');
+
+  useEffect(() => {
+    setRouteEstimate(null);
+  }, [watchedOrigin, watchedDestination]);
+
+  useEffect(() => {
+    const previousMode = previousRouteMode.current;
+    if (previousMode === routeMode) {
+      return;
+    }
+
+    const currentDistance = getValues('distanceKm');
+    if (!currentDistance) {
+      previousRouteMode.current = routeMode;
+      return;
+    }
+
+    const parsedDistance = Number(`${currentDistance}`.replace(',', '.'));
+    if (!Number.isFinite(parsedDistance) || parsedDistance <= 0) {
+      previousRouteMode.current = routeMode;
+      return;
+    }
+
+    const adjustedDistance =
+      previousMode === 'one_way' && routeMode === 'round_trip'
+        ? parsedDistance * 2
+        : parsedDistance / 2;
+
+    setValue('distanceKm', adjustedDistance.toFixed(1), { shouldValidate: true });
+    previousRouteMode.current = routeMode;
+  }, [getValues, routeMode, setValue]);
 
   useEffect(() => {
     if (!focusedField) {
@@ -107,7 +157,7 @@ export default function NewTripModal() {
 
   const handleAutoEstimate = async () => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veículo antes de planejar uma viagem.');
+      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
       return;
     }
 
@@ -133,7 +183,8 @@ export default function NewTripModal() {
       });
 
       setRouteEstimate(nextEstimate);
-      setValue('distanceKm', nextEstimate.distanceKm.toFixed(1), { shouldValidate: true });
+      const tripMultiplier = routeMode === 'round_trip' ? 2 : 1;
+      setValue('distanceKm', (nextEstimate.distanceKm * tripMultiplier).toFixed(1), { shouldValidate: true });
 
       if (nextEstimate.suggestedFuelPrice) {
         setValue('fuelPrice', nextEstimate.suggestedFuelPrice.toFixed(2), { shouldValidate: true });
@@ -144,31 +195,37 @@ export default function NewTripModal() {
         destination,
         countryCode: preferences.countryCode,
       });
-      const message = error instanceof Error ? error.message : 'Não foi possível buscar a distância automática.';
+      const message = error instanceof Error ? error.message : 'Nao foi possivel buscar a distancia automatica.';
       setSubmitError(message);
     } finally {
       setEstimating(false);
     }
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: { origin: string; destination: string; distanceKm: number; passengers: number; fuelPrice: number; tollCost: number }) => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veículo antes de planejar uma viagem.');
+      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
       return;
     }
 
     setSubmitError('');
+
     const avgConsumption = defaultVehicle.manualAvgConsumption;
     const requiredLiters = calculateRequiredLiters(data.distanceKm, avgConsumption);
     const fuelCost = calculateFuelCost(requiredLiters, data.fuelPrice);
     const totalCost = calculateTotalTripCost(fuelCost, data.tollCost);
+
     setResult({
       ...data,
+      routeMode,
       avgConsumption,
       requiredLiters,
       fuelCost,
       totalCost,
-      durationMinutes: routeEstimate?.durationMinutes,
+      durationMinutes:
+        routeEstimate?.durationMinutes
+          ? routeEstimate.durationMinutes * (routeMode === 'round_trip' ? 2 : 1)
+          : undefined,
     });
   };
 
@@ -190,14 +247,14 @@ export default function NewTripModal() {
       tollCost: result.tollCost,
       fuelCost: result.fuelCost,
       totalCost: result.totalCost,
-      roundTrip: false,
+      roundTrip: result.routeMode === 'round_trip',
       passengers: result.passengers,
     });
 
     setSaving(false);
 
     if (saveResult.error) {
-      setSubmitError('Não foi possível salvar a viagem. Tente novamente.');
+      setSubmitError('Nao foi possivel salvar a viagem. Tente novamente.');
       return;
     }
 
@@ -221,10 +278,10 @@ export default function NewTripModal() {
           <>
             <View className="mb-6 p-4 bg-surface rounded-3xl border border-surfaceLight">
               <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
-                Veículo selecionado
+                Veiculo selecionado
               </Text>
               <Text className="text-textMain font-black text-lg tracking-tight">
-                {defaultVehicle?.nickname || 'Nenhum veículo'}
+                {defaultVehicle?.nickname || 'Nenhum veiculo'}
               </Text>
               <Text className="text-xs text-textMuted font-medium mt-0.5">
                 Consumo base: {defaultVehicle?.manualAvgConsumption} km/l
@@ -258,7 +315,7 @@ export default function NewTripModal() {
               render={({ field: { onChange, value } }) => (
                 <Input
                   label="Destino"
-                  placeholder="Ex: Foz do Iguaçu, PR"
+                  placeholder="Ex: Foz do Iguacu, PR"
                   value={value}
                   onChangeText={onChange}
                   onFocus={() => setFocusedField('destination')}
@@ -295,7 +352,7 @@ export default function NewTripModal() {
             {defaultVehicle?.fuelType === 'flex' ? (
               <View className="mb-4">
                 <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
-                  Combustível para preço médio
+                  Combustivel para preco medio
                 </Text>
                 <View className="flex-row gap-2">
                   {[
@@ -321,8 +378,33 @@ export default function NewTripModal() {
               <Text className="text-textMuted text-xs mb-4 px-1">{t('trip.autoFuelGasolineHint')}</Text>
             ) : null}
 
+            <View className="mb-4">
+              <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
+                Tipo de trajeto
+              </Text>
+              <View className="flex-row gap-2">
+                {[
+                  { key: 'one_way', label: 'Ida' },
+                  { key: 'round_trip', label: 'Ida + volta' },
+                ].map(({ key, label }) => (
+                  <Button
+                    key={key}
+                    label={label}
+                    variant={routeMode === key ? 'primary' : 'ghost'}
+                    onPress={() => setRouteMode(key as RouteMode)}
+                    className="flex-1"
+                  />
+                ))}
+              </View>
+              <Text className="text-textMuted text-xs mt-3 px-1">
+                {routeMode === 'round_trip'
+                  ? 'A distancia informada ou buscada e tratada como o trecho de ida. O calculo dobra o total.'
+                  : 'O calculo considera apenas o percurso de ida.'}
+              </Text>
+            </View>
+
             <Button
-              label={estimating ? 'Buscando rota...' : 'Buscar distância e preço médio'}
+              label={estimating ? 'Buscando rota...' : 'Buscar distancia e preco medio'}
               onPress={handleAutoEstimate}
               isLoading={estimating}
               className="mb-4"
@@ -335,7 +417,7 @@ export default function NewTripModal() {
                   name="distanceKm"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Distância (km)"
+                      label="Distancia (km)"
                       placeholder="150"
                       keyboardType="decimal-pad"
                       value={value}
@@ -347,7 +429,7 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.distanceSource ? (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Distância sugerida por {routeEstimate.distanceSource}.
+                    Distancia de ida sugerida por {routeEstimate.distanceSource}.
                   </Text>
                 ) : null}
               </View>
@@ -377,7 +459,7 @@ export default function NewTripModal() {
                   name="fuelPrice"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Preço combustível"
+                      label="Preco combustivel"
                       placeholder="5.79"
                       keyboardType="decimal-pad"
                       value={value}
@@ -389,7 +471,7 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.suggestedFuelPrice ? (
                   <Text className="text-primary text-xs font-bold mt-[-10px] mb-4 px-1">
-                    Sugestão {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
+                    Sugestao {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
                     {routeEstimate.fuelPriceCity && routeEstimate.fuelPriceState
                       ? ` em ${routeEstimate.fuelPriceCity}/${routeEstimate.fuelPriceState}`
                       : ''}
@@ -397,7 +479,7 @@ export default function NewTripModal() {
                   </Text>
                 ) : (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Preço editável. Se a API não encontrar a média local, informe manualmente.
+                    Preco editavel. Se a API nao encontrar a media local, informe manualmente.
                   </Text>
                 )}
               </View>
@@ -407,7 +489,7 @@ export default function NewTripModal() {
                   name="tollCost"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Pedágios"
+                      label="Pedagios"
                       placeholder="24.50"
                       keyboardType="decimal-pad"
                       value={value}
@@ -418,7 +500,7 @@ export default function NewTripModal() {
                   )}
                 />
                 <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                  Pedágio continua manual por enquanto.
+                  Pedagio continua manual por enquanto.
                 </Text>
               </View>
             </View>
@@ -442,7 +524,7 @@ export default function NewTripModal() {
                   </Text>
                 </View>
                 <View className="items-end">
-                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Combustível</Text>
+                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Combustivel</Text>
                   <Text className="text-white font-black text-xl mt-1">{result.requiredLiters.toFixed(2)} L</Text>
                 </View>
               </View>
@@ -451,13 +533,14 @@ export default function NewTripModal() {
             <Text className="text-textMain font-black text-xl tracking-tight mb-4">Resumo da rota</Text>
             <View className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-6">
               {[
-                { label: 'Distância', value: `${result.distanceKm.toFixed(1)} km` },
+                { label: 'Trajeto', value: result.routeMode === 'round_trip' ? 'Ida + volta' : 'Ida' },
+                { label: 'Distancia', value: `${result.distanceKm.toFixed(1)} km` },
                 {
-                  label: 'Duração',
-                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Não informada',
+                  label: 'Duracao',
+                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Nao informada',
                 },
-                { label: 'Combustível', value: formatCurrency(result.fuelCost) },
-                { label: 'Pedágio', value: formatCurrency(result.tollCost) },
+                { label: 'Combustivel', value: formatCurrency(result.fuelCost) },
+                { label: 'Pedagio', value: formatCurrency(result.tollCost) },
               ].map((item, index, items) => (
                 <View
                   key={item.label}

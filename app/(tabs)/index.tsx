@@ -2,10 +2,11 @@ import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Car, MapPin, Fuel, TrendingUp, LogOut } from 'lucide-react-native';
+import { Car, MapPin, Fuel, TrendingUp, LogOut, Wrench } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useRefuels } from '@/hooks/useRefuels';
 import { useOilChanges } from '@/hooks/useOilChanges';
+import { useMaintenanceExpenses } from '@/hooks/useMaintenanceExpenses';
 import { useAuth } from '@/lib/AuthContext';
 import { StatCard } from '@/components/ui/StatCard';
 import { usePreferences } from '@/lib/PreferencesContext';
@@ -14,6 +15,7 @@ import {
   formatCurrencyForPreferences,
   formatDistanceForPreferences,
 } from '@/lib/formatting';
+import { getMaintenanceMonthlyAverage } from '@/lib/maintenance';
 import { getUpcomingOilAlert } from '@/lib/oil';
 
 export default function DashboardScreen() {
@@ -22,6 +24,7 @@ export default function DashboardScreen() {
   const { vehicles, loading: vehiclesLoading, refetch: refetchVehicles } = useVehicles();
   const { refuels, loading: refuelsLoading, refetch: refetchRefuels } = useRefuels();
   const { oilChanges, refetch: refetchOilChanges } = useOilChanges();
+  const { expenses, refetch: refetchMaintenanceExpenses } = useMaintenanceExpenses();
   const { signOut } = useAuth();
   const { preferences, t } = usePreferences();
 
@@ -32,21 +35,27 @@ export default function DashboardScreen() {
         return;
       }
 
-      Promise.allSettled([refetchVehicles(), refetchRefuels(), refetchOilChanges()]).then((results) => {
+      Promise.allSettled([
+        refetchVehicles(),
+        refetchRefuels(),
+        refetchOilChanges(),
+        refetchMaintenanceExpenses(),
+      ]).then((results) => {
         results.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             return;
           }
 
-          const source = ['vehicles', 'refuels', 'oil changes'][index];
+          const source = ['vehicles', 'refuels', 'oil changes', 'maintenance expenses'][index];
           console.error(`Failed to refresh dashboard ${source}`, result.reason);
         });
       });
-    }, [refetchOilChanges, refetchRefuels, refetchVehicles])
+    }, [refetchMaintenanceExpenses, refetchOilChanges, refetchRefuels, refetchVehicles])
   );
 
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
   const totalSpent = refuels.reduce((sum, refuel) => sum + refuel.totalPrice, 0);
+  const monthlyMaintenanceCost = getMaintenanceMonthlyAverage(expenses, defaultVehicle?.id);
 
   const estimatedCostPerKm = (() => {
     if (!defaultVehicle || defaultVehicle.manualAvgConsumption === 0) return null;
@@ -69,14 +78,8 @@ export default function DashboardScreen() {
         style={{ paddingTop: insets.top + 16 }}
       >
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-xs font-bold uppercase tracking-widest text-textMuted">
-            Veículo atual
-          </Text>
-          <TouchableOpacity
-            onPress={signOut}
-            className="bg-surfaceLight p-2 rounded-full"
-            hitSlop={10}
-          >
+          <Text className="text-xs font-bold uppercase tracking-widest text-textMuted">Veiculo atual</Text>
+          <TouchableOpacity onPress={signOut} className="bg-surfaceLight p-2 rounded-full" hitSlop={10}>
             <LogOut size={18} color="#B3B3B3" />
           </TouchableOpacity>
         </View>
@@ -121,18 +124,27 @@ export default function DashboardScreen() {
       >
         <View className="flex-row gap-4 mb-6">
           <StatCard
-            title="Consumo médio"
+            title="Consumo medio"
             value={defaultVehicle ? formatConsumptionForPreferences(defaultVehicle.manualAvgConsumption, preferences) : '--'}
             icon={<TrendingUp size={16} color="#1DB954" />}
           />
           <StatCard
             title="Gasto total"
-            value={totalSpent > 0 ? formatCurrencyForPreferences(totalSpent, preferences) : formatCurrencyForPreferences(0, preferences)}
+            value={formatCurrencyForPreferences(totalSpent, preferences)}
             icon={<Fuel size={16} color="#E91429" />}
           />
         </View>
 
-        <View className="mb-6 bg-secondary rounded-3xl p-5 border-b-4 border-[#1a4ba3]">
+        <View className="mb-6">
+          <StatCard
+            title={t('maintenance.dashboardMonthly')}
+            value={formatCurrencyForPreferences(monthlyMaintenanceCost, preferences)}
+            subtitle={t('maintenance.last30DaysTotal')}
+            icon={<Wrench size={16} color="#3B82F6" />}
+          />
+        </View>
+
+        <View className="mb-6 bg-primary rounded-3xl p-5 border-b-4 border-[#14833b]">
           <View className="flex-row justify-between items-center">
             <View className="flex-1 pr-4">
               <Text className="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">
@@ -145,7 +157,7 @@ export default function DashboardScreen() {
                 <Text className="text-white/50 text-xs mt-1">Registre um abastecimento</Text>
               ) : null}
             </View>
-            <View className="bg-white/20 p-4 rounded-2xl">
+            <View className="bg-black/15 p-4 rounded-2xl">
               <TrendingUp size={28} color="white" />
             </View>
           </View>
@@ -153,29 +165,30 @@ export default function DashboardScreen() {
 
         {oilAlert ? (
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/oil')}
+            onPress={() => router.push('/(tabs)/maintenance')}
             className={`mb-6 rounded-3xl p-5 border-2 ${
               oilAlert.dueByDate || oilAlert.dueByKm ? 'bg-danger/10 border-danger' : 'bg-primary/10 border-primary'
             }`}
           >
             <Text className={`font-black text-lg ${oilAlert.dueByDate || oilAlert.dueByKm ? 'text-danger' : 'text-primary'}`}>
-              {oilAlert.dueByDate || oilAlert.dueByKm ? t('oil.alertDue') : t('oil.alertSoon')}
+              {oilAlert.dueByDate || oilAlert.dueByKm ? t('maintenance.alertDue') : t('maintenance.alertSoon')}
             </Text>
             <Text className="text-textMuted mt-2">
               {oilAlert.oilChange.oilName}
-              {oilAlert.remainingKm !== null ? ` • ${formatDistanceForPreferences(oilAlert.remainingKm, preferences)} restantes` : ''}
+              {oilAlert.remainingKm !== null
+                ? ` • ${formatDistanceForPreferences(oilAlert.remainingKm, preferences)} restantes`
+                : ''}
             </Text>
             {oilAlert.oilChange.nextChangeDate ? (
               <Text className="text-textMuted mt-1">
-                {t('oil.nextByDate')}: {new Date(oilAlert.oilChange.nextChangeDate).toLocaleDateString('pt-BR')}
+                {t('maintenance.nextByDate')}:{' '}
+                {new Date(oilAlert.oilChange.nextChangeDate).toLocaleDateString('pt-BR')}
               </Text>
             ) : null}
           </TouchableOpacity>
         ) : null}
 
-        <Text className="text-xl font-black tracking-tight text-textMain mb-5 ml-1">
-          Ações rápidas
-        </Text>
+        <Text className="text-xl font-black tracking-tight text-textMain mb-5 ml-1">Acoes rapidas</Text>
 
         <View className="flex-row gap-4 mb-8">
           <TouchableOpacity
@@ -185,10 +198,7 @@ export default function DashboardScreen() {
             <View className="w-14 h-14 rounded-full bg-[#1a1a1a] items-center justify-center mb-3">
               <MapPin size={24} color="#3B82F6" />
             </View>
-            <Text
-              className="w-full text-[15px] leading-5 font-bold text-textMain text-center"
-              numberOfLines={2}
-            >
+            <Text className="w-full text-[15px] leading-5 font-bold text-textMain text-center" numberOfLines={2}>
               Nova viagem
             </Text>
           </TouchableOpacity>
@@ -200,10 +210,7 @@ export default function DashboardScreen() {
             <View className="w-14 h-14 rounded-full bg-[#1a1a1a] items-center justify-center mb-3">
               <Fuel size={24} color="#1DB954" />
             </View>
-            <Text
-              className="w-full text-[15px] leading-5 font-bold text-textMain text-center"
-              numberOfLines={2}
-            >
+            <Text className="w-full text-[15px] leading-5 font-bold text-textMain text-center" numberOfLines={2}>
               Abastecer
             </Text>
           </TouchableOpacity>
