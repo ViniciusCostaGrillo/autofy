@@ -1,3 +1,7 @@
+param(
+  [string]$SourcePath
+)
+
 Add-Type -AssemblyName System.Drawing
 
 $ErrorActionPreference = 'Stop'
@@ -150,6 +154,15 @@ function Draw-LogoMark {
   $road.Dispose()
 }
 
+function Set-GraphicsQuality {
+  param([System.Drawing.Graphics]$Graphics)
+
+  $Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+  $Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+  $Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+}
+
 function Save-Bitmap {
   param(
     [string]$Path,
@@ -161,6 +174,7 @@ function Save-Bitmap {
   $bitmap = New-Object System.Drawing.Bitmap($Width, $Height, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
   $graphics.Clear([System.Drawing.Color]::Transparent)
+  Set-GraphicsQuality -Graphics $graphics
 
   & $Painter $graphics
 
@@ -169,8 +183,69 @@ function Save-Bitmap {
   $bitmap.Dispose()
 }
 
+function Draw-SourceImageCover {
+  param(
+    [System.Drawing.Graphics]$Graphics,
+    [System.Drawing.Image]$Image,
+    [int]$Width,
+    [int]$Height
+  )
+
+  Set-GraphicsQuality -Graphics $Graphics
+
+  $sourceRatio = $Image.Width / $Image.Height
+  $targetRatio = $Width / $Height
+
+  if ($sourceRatio -gt $targetRatio) {
+    $cropHeight = $Image.Height
+    $cropWidth = [int]($cropHeight * $targetRatio)
+    $cropX = [int](($Image.Width - $cropWidth) / 2)
+    $cropY = 0
+  } else {
+    $cropWidth = $Image.Width
+    $cropHeight = [int]($cropWidth / $targetRatio)
+    $cropX = 0
+    $cropY = [int](($Image.Height - $cropHeight) / 2)
+  }
+
+  $destination = [System.Drawing.Rectangle]::new(0, 0, $Width, $Height)
+  $source = [System.Drawing.Rectangle]::new($cropX, $cropY, $cropWidth, $cropHeight)
+  $Graphics.DrawImage($Image, $destination, $source, [System.Drawing.GraphicsUnit]::Pixel)
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $imagesDir = Join-Path $root 'assets\images'
+
+if ($SourcePath) {
+  $resolvedSourcePath = (Resolve-Path $SourcePath).Path
+  $sourceImage = [System.Drawing.Image]::FromFile($resolvedSourcePath)
+
+  try {
+    Save-Bitmap (Join-Path $imagesDir 'icon.png') 1024 1024 {
+      param($graphics)
+      Draw-SourceImageCover -Graphics $graphics -Image $sourceImage -Width 1024 -Height 1024
+    }
+
+    Save-Bitmap (Join-Path $imagesDir 'adaptive-icon.png') 1024 1024 {
+      param($graphics)
+      Draw-SourceImageCover -Graphics $graphics -Image $sourceImage -Width 1024 -Height 1024
+    }
+
+    Save-Bitmap (Join-Path $imagesDir 'splash-icon.png') 1024 1024 {
+      param($graphics)
+      Draw-SourceImageCover -Graphics $graphics -Image $sourceImage -Width 1024 -Height 1024
+    }
+
+    Save-Bitmap (Join-Path $imagesDir 'favicon.png') 48 48 {
+      param($graphics)
+      Draw-SourceImageCover -Graphics $graphics -Image $sourceImage -Width 48 -Height 48
+    }
+  } finally {
+    $sourceImage.Dispose()
+  }
+
+  return
+}
 
 Save-Bitmap (Join-Path $imagesDir 'icon.png') 1024 1024 {
   param($graphics)

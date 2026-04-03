@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { sendOtp, verifyOtp, signInAsAdmin } = useAuth();
+  const { sendOtp, verifyOtp, signInAsAdmin, canUseLocalAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
@@ -85,12 +85,14 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        <Button
-          label="Entrar como admin de teste"
-          onPress={signInAsAdmin}
-          className="mb-4"
-          variant="secondary"
-        />
+        {canUseLocalAdmin ? (
+          <Button
+            label="Entrar como admin de teste"
+            onPress={signInAsAdmin}
+            className="mb-4"
+            variant="secondary"
+          />
+        ) : null}
 
         <View className="bg-surface rounded-3xl p-6 border border-surfaceLight">
           {step === 'email' ? (

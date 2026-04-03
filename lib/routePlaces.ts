@@ -1,5 +1,4 @@
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+import { supabase } from './supabase';
 
 interface SearchPlacesResponse {
   data?: Array<{
@@ -11,25 +10,14 @@ interface SearchPlacesResponse {
 }
 
 export async function searchRoutePlaces(query: string, countryCode = 'BR') {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase env vars missing for place search.');
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/route-places`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
-    },
-    body: JSON.stringify({ query, countryCode }),
+  const { data, error } = await supabase.functions.invoke('route-places', {
+    body: { query, countryCode },
   });
 
-  const payload = (await response.json()) as SearchPlacesResponse;
-
-  if (!response.ok) {
-    throw new Error(payload.error || 'Nao foi possivel buscar lugares.');
+  const payload = data as SearchPlacesResponse | null;
+  if (error) {
+    throw new Error(payload?.error || error.message || 'Nao foi possivel buscar lugares.');
   }
 
-  return payload.data || [];
+  return payload?.data || [];
 }

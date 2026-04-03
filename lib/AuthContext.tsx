@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { getSecureFlag, removeSecureFlag, setSecureFlag } from './secureStorage';
 
 const LOCAL_ADMIN_KEY = 'autofy.localAdmin.enabled';
 const LOCAL_ADMIN_ID = 'local-admin';
 const LOCAL_ADMIN_EMAIL = 'admin@autofy.test';
+const LOCAL_ADMIN_ENABLED = __DEV__;
 
 interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isLocalAdmin: boolean;
+  canUseLocalAdmin: boolean;
   signOut: () => Promise<void>;
   sendOtp: (email: string) => Promise<{ error: any }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
@@ -27,11 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([supabase.auth.getSession(), AsyncStorage.getItem(LOCAL_ADMIN_KEY)])
+    Promise.all([supabase.auth.getSession(), getSecureFlag(LOCAL_ADMIN_KEY)])
       .then(([{ data: { session } }, localAdminFlag]) => {
         if (!mounted) return;
 
-        if (localAdminFlag === 'true') {
+        if (!LOCAL_ADMIN_ENABLED && localAdminFlag === 'true') {
+          removeSecureFlag(LOCAL_ADMIN_KEY).catch(() => undefined);
+          setSession(session);
+          setIsLocalAdmin(false);
+        } else if (LOCAL_ADMIN_ENABLED && localAdminFlag === 'true') {
           setSession(createLocalAdminSession());
           setIsLocalAdmin(true);
         } else {
@@ -73,21 +79,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await AsyncStorage.removeItem(LOCAL_ADMIN_KEY);
+    await removeSecureFlag(LOCAL_ADMIN_KEY);
     setIsLocalAdmin(false);
     setSession(null);
     await supabase.auth.signOut();
   };
 
   const signInAsAdmin = async () => {
-    await AsyncStorage.setItem(LOCAL_ADMIN_KEY, 'true');
+    if (!LOCAL_ADMIN_ENABLED) {
+      throw new Error('Local admin is disabled outside development.');
+    }
+
+    await setSecureFlag(LOCAL_ADMIN_KEY, 'true');
     setIsLocalAdmin(true);
     setSession(createLocalAdminSession());
   };
 
   return (
     <AuthContext.Provider
-      value={{ session, loading, isLocalAdmin, signOut, sendOtp, verifyOtp, signInAsAdmin }}
+      value={{
+        session,
+        loading,
+        isLocalAdmin,
+        canUseLocalAdmin: LOCAL_ADMIN_ENABLED,
+        signOut,
+        sendOtp,
+        verifyOtp,
+        signInAsAdmin,
+      }}
     >
       {children}
     </AuthContext.Provider>

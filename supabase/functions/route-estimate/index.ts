@@ -1,6 +1,9 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface EstimateRouteRequest {
@@ -66,6 +69,11 @@ Deno.serve(async (request) => {
   }
 
   try {
+    const authErrorResponse = await requireAuthenticatedUser(request);
+    if (authErrorResponse) {
+      return authErrorResponse;
+    }
+
     const openRouteServiceApiKey = Deno.env.get('OPENROUTESERVICE_API_KEY');
     if (!openRouteServiceApiKey) {
       return jsonResponse({ error: 'OPENROUTESERVICE_API_KEY nao configurada.' }, 500);
@@ -131,6 +139,42 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: message }, 500);
   }
 });
+
+async function requireAuthenticatedUser(request: Request) {
+  const authorization = request.headers.get('Authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return jsonResponse({ error: 'Supabase auth env vars missing.' }, 500);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: authorization,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  return null;
+}
 
 async function geocodePlace(apiKey: string, query: string, countryCode: string) {
   const url = new URL('https://api.openrouteservice.org/geocode/search');
