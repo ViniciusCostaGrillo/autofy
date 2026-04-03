@@ -5,6 +5,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -20,19 +21,26 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  useEffect(() => { if (error) throw error; }, [error]);
-  useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
 
   if (!loaded) return null;
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
-const DarkSpotifyTheme = {
+const darkSpotifyTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
@@ -50,21 +58,27 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (loading) return;
+
     const inAuthGroup = segments[0] === '(auth)';
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (session && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments]);
+  }, [loading, router, segments, session]);
 
   if (loading) {
     return <View style={{ flex: 1, backgroundColor: '#121212' }} />;
   }
 
   return (
-    <ThemeProvider value={DarkSpotifyTheme}>
-      <Stack>
+    <ThemeProvider value={darkSpotifyTheme}>
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: '#121212' },
+          headerShadowVisible: false,
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen
@@ -91,7 +105,7 @@ function RootLayoutNav() {
           name="(modals)/new-vehicle"
           options={{
             presentation: 'modal',
-            title: 'Novo Veículo',
+            title: 'Novo Veiculo',
             headerStyle: { backgroundColor: '#1E1E1E' },
             headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
             headerTintColor: '#1DB954',

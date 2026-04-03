@@ -1,19 +1,33 @@
 import React, { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin, ArrowRight, Plus } from 'lucide-react-native';
 import { useTrips } from '@/hooks/useTrips';
 import { formatCurrency } from '@/utils/calculations';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function TripsScreen() {
+  const insets = useSafeAreaInsets();
   const { trips, loading, refetch } = useTrips();
 
-  // Refetch sempre que a tela entrar em foco (ex: após fechar um modal)
-  useFocusEffect(useCallback(() => { refetch(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      refetch().catch((error) => {
+        console.error('Failed to refresh trips', error);
+      });
+    }, [refetch])
+  );
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingBottom: 100 }}>
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{
+        padding: 24,
+        paddingBottom: Math.max(insets.bottom, 16) + 32,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-black text-textMain tracking-tighter">Viagens</Text>
         <TouchableOpacity
@@ -40,16 +54,24 @@ export default function TripsScreen() {
             <View key={trip.id} className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-4">
               <View className="flex-row items-center justify-between mb-3 border-b border-surfaceLight pb-3">
                 <View className="flex-row items-center flex-1 pr-4">
-                  <Text className="text-textMain font-bold" numberOfLines={1}>{trip.origin}</Text>
+                  <Text className="text-textMain font-bold" numberOfLines={1}>
+                    {trip.origin}
+                  </Text>
                   <ArrowRight size={14} color="#B3B3B3" style={{ marginHorizontal: 8 }} />
-                  <Text className="text-textMain font-bold flex-1" numberOfLines={1}>{trip.destination}</Text>
+                  <Text className="text-textMain font-bold flex-1" numberOfLines={1}>
+                    {trip.destination}
+                  </Text>
                 </View>
                 <Text className="text-xl font-black text-primary">{formatCurrency(trip.totalCost)}</Text>
               </View>
               <View className="flex-row justify-between">
                 <Text className="text-textMuted font-medium text-sm">{trip.distanceKm} km</Text>
-                <Text className="text-textMuted font-medium text-sm">{trip.passengers} pessoa{trip.passengers !== 1 ? 's' : ''}</Text>
-                <Text className="text-textMuted font-medium text-sm">{new Date(trip.createdAt).toLocaleDateString('pt-BR')}</Text>
+                <Text className="text-textMuted font-medium text-sm">
+                  {trip.passengers} pessoa{trip.passengers !== 1 ? 's' : ''}
+                </Text>
+                <Text className="text-textMuted font-medium text-sm">
+                  {new Date(trip.createdAt).toLocaleDateString('pt-BR')}
+                </Text>
               </View>
             </View>
           ))}
