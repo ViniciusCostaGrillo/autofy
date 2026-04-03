@@ -63,7 +63,7 @@ export default function DashboardScreen() {
       >
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-xs font-bold uppercase tracking-widest text-textMuted">
-            Veiculo atual
+            Veículo atual
           </Text>
           <TouchableOpacity
             onPress={signOut}
@@ -114,7 +114,7 @@ export default function DashboardScreen() {
       >
         <View className="flex-row gap-4 mb-6">
           <StatCard
-            title="Consumo medio"
+            title="Consumo médio"
             value={defaultVehicle ? formatConsumptionForPreferences(defaultVehicle.manualAvgConsumption, preferences) : '--'}
             icon={<TrendingUp size={16} color="#1DB954" />}
           />
@@ -167,30 +167,36 @@ export default function DashboardScreen() {
         ) : null}
 
         <Text className="text-xl font-black tracking-tight text-textMain mb-5 ml-1">
-          Acoes rapidas
+          Ações rápidas
         </Text>
 
         <View className="flex-row gap-4 mb-8">
           <TouchableOpacity
             onPress={() => router.push('/(modals)/trip-planner')}
-            className="flex-1 items-center justify-center p-5 bg-surface rounded-3xl border-2 border-surfaceLight"
+            className="flex-1 min-h-[156px] items-center justify-center px-4 py-5 bg-surface rounded-3xl border-2 border-surfaceLight"
           >
             <View className="w-14 h-14 rounded-full bg-[#1a1a1a] items-center justify-center mb-3">
               <MapPin size={24} color="#3B82F6" />
             </View>
-            <Text className="text-sm font-bold text-textMain tracking-wide text-center">
+            <Text
+              className="w-full text-[15px] leading-5 font-bold text-textMain text-center"
+              numberOfLines={2}
+            >
               Nova viagem
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push('/(modals)/new-refuel')}
-            className="flex-1 items-center justify-center p-5 bg-surface rounded-3xl border-2 border-surfaceLight"
+            className="flex-1 min-h-[156px] items-center justify-center px-4 py-5 bg-surface rounded-3xl border-2 border-surfaceLight"
           >
             <View className="w-14 h-14 rounded-full bg-[#1a1a1a] items-center justify-center mb-3">
               <Fuel size={24} color="#1DB954" />
             </View>
-            <Text className="text-sm font-bold text-textMain tracking-wide text-center">
+            <Text
+              className="w-full text-[15px] leading-5 font-bold text-textMain text-center"
+              numberOfLines={2}
+            >
               Abastecer
             </Text>
           </TouchableOpacity>
