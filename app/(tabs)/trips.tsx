@@ -46,7 +46,7 @@ export default function TripsScreen() {
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-black text-textMain tracking-tighter">Viagens</Text>
         <TouchableOpacity
-          onPress={() => router.push('/(modals)/new-trip')}
+          onPress={() => router.push('/(modals)/trip-planner')}
           className="bg-primary w-12 h-12 rounded-full items-center justify-center border-b-4 border-[#14833b]"
         >
           <Plus size={24} color="#121212" />

@@ -172,7 +172,7 @@ export default function DashboardScreen() {
 
         <View className="flex-row gap-4 mb-8">
           <TouchableOpacity
-            onPress={() => router.push('/(modals)/new-trip')}
+            onPress={() => router.push('/(modals)/trip-planner')}
             className="flex-1 items-center justify-center p-5 bg-surface rounded-3xl border-2 border-surfaceLight"
           >
             <View className="w-14 h-14 rounded-full bg-[#1a1a1a] items-center justify-center mb-3">
