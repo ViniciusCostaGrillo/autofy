@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Car, Plus } from 'lucide-react-native';
+import { Car, Plus, Trash2 } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { usePreferences } from '@/lib/PreferencesContext';
@@ -28,7 +28,7 @@ const FUEL_COLORS: Record<string, string> = {
 
 export default function VehiclesScreen() {
   const insets = useSafeAreaInsets();
-  const { vehicles, loading, refetch, setDefault } = useVehicles();
+  const { vehicles, loading, refetch, setDefault, deleteVehicle } = useVehicles();
   const { preferences } = usePreferences();
 
   useFocusEffect(
@@ -38,6 +38,26 @@ export default function VehiclesScreen() {
       });
     }, [refetch])
   );
+
+  const handleDeleteVehicle = (vehicleId: string, nickname: string) => {
+    Alert.alert(
+      'Excluir veiculo',
+      `Deseja excluir "${nickname}"? Essa acao nao pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteVehicle(vehicleId);
+            if (result.error) {
+              Alert.alert('Erro', 'Nao foi possivel excluir o veiculo.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (loading) {
     return (
@@ -83,6 +103,7 @@ export default function VehiclesScreen() {
                     >
                       <Car size={26} color={color} />
                     </View>
+
                     <View className="flex-1">
                       <View className="flex-row items-center gap-2 flex-wrap">
                         <Text className="text-textMain font-black text-xl tracking-tight">
@@ -98,6 +119,13 @@ export default function VehiclesScreen() {
                         {vehicle.brand} {vehicle.model} • {vehicle.year}
                       </Text>
                     </View>
+
+                    <TouchableOpacity
+                      onPress={() => handleDeleteVehicle(vehicle.id, vehicle.nickname)}
+                      className="w-11 h-11 rounded-full items-center justify-center bg-danger/10 border border-danger/20"
+                    >
+                      <Trash2 size={18} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
 
                   <View className="flex-row mt-4 pt-4 border-t border-surfaceLight">

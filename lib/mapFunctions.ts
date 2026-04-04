@@ -1,14 +1,19 @@
 import { supabaseAnonKey, supabaseUrl } from './supabase';
 
 export async function invokeMapFunction<TResponse>(name: string, body: unknown): Promise<TResponse> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
+
   const response = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
     },
     body: JSON.stringify(body),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   const rawText = await response.text();
   const payload = safeParsePayload<TResponse>(rawText);

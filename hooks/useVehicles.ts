@@ -214,5 +214,63 @@ export function useVehicles() {
     return updateVehicle(id, { isDefault: true });
   };
 
-  return { vehicles, loading, refetch, addVehicle, updateVehicle, setDefault };
+  const deleteVehicle = async (id: string): Promise<MutationResult> => {
+    if (!session?.user?.id) {
+      return { error: new Error('User not authenticated') };
+    }
+
+    if (isLocalAdmin) {
+      try {
+        const existing = await getLocalVehicles();
+        const target = existing.find((item) => item.id === id);
+        if (!target) {
+          return { error: new Error('Vehicle not found') };
+        }
+
+        const remaining = existing.filter((item) => item.id !== id);
+        if (target.isDefault && remaining.length > 0) {
+          remaining[0] = { ...remaining[0], isDefault: true, updatedAt: new Date().toISOString() };
+        }
+
+        await saveLocalVehicles(remaining);
+        await refetch();
+        return { error: null };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error : new Error('Failed to delete local vehicle'),
+        };
+      }
+    }
+
+    const target = vehicles.find((item) => item.id === id);
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+
+    if (error) {
+      return { error };
+    }
+
+    if (target?.isDefault) {
+      const nextDefault = vehicles.find((item) => item.id !== id);
+      if (nextDefault) {
+        const defaultResult = await supabase
+          .from('vehicles')
+          .update({ is_default: true })
+          .eq('id', nextDefault.id)
+          .eq('user_id', session.user.id);
+
+        if (defaultResult.error) {
+          return { error: defaultResult.error };
+        }
+      }
+    }
+
+    await refetch();
+    return { error: null };
+  };
+
+  return { vehicles, loading, refetch, addVehicle, updateVehicle, setDefault, deleteVehicle };
 }

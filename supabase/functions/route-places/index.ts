@@ -9,13 +9,8 @@ interface SearchPlacesRequest {
   countryCode?: string;
 }
 
-interface OpenRouteGeocodeResponse {
-  features?: Array<{
-    properties?: Record<string, unknown>;
-  }>;
-  error?: {
-    message?: string;
-  };
+interface PhotonFeature {
+  properties?: Record<string, string>;
 }
 
 Deno.serve(async (request) => {
@@ -28,11 +23,6 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const openRouteServiceApiKey = Deno.env.get('OPENROUTESERVICE_API_KEY');
-    if (!openRouteServiceApiKey) {
-      return jsonResponse({ error: 'Serviço de rotas não configurado.' }, 500);
-    }
-
     const body = (await request.json()) as SearchPlacesRequest;
     const query = sanitizeQuery(body.query);
     const countryCode = sanitizeCountryCode(body.countryCode);
@@ -41,34 +31,45 @@ Deno.serve(async (request) => {
       return jsonResponse({ data: [] });
     }
 
-    const url = new URL('https://api.openrouteservice.org/geocode/autocomplete');
-    url.searchParams.set('api_key', openRouteServiceApiKey);
-    url.searchParams.set('text', query);
-    url.searchParams.set('size', '8');
-    url.searchParams.set('boundary.country', countryCode);
-    url.searchParams.set('lang', countryCode === 'BR' ? 'pt-BR' : countryCode === 'ES' ? 'es' : 'en');
+    const url = new URL('https://photon.komoot.io/api/');
+    url.searchParams.set('q', query);
+    url.searchParams.set('limit', '8');
 
     const response = await fetch(url);
-    const payload = (await response.json()) as OpenRouteGeocodeResponse;
-
     if (!response.ok) {
-      return jsonResponse({ error: payload.error?.message || 'Falha ao buscar lugares.' }, response.status);
+      return jsonResponse({ error: `Falha ao buscar lugares (${response.status}).` }, response.status);
     }
 
-    const data =
-      payload.features?.map((feature) => {
-        const properties = feature.properties || {};
-        const locality = firstString(properties.locality, properties.localadmin, properties.county);
-        const region = firstString(properties.region_a, properties.region);
-        const label = firstString(properties.label, properties.name, properties.street);
-        const display = label || [locality, region].filter(Boolean).join(', ');
-
+    const payload = (await response.json()) as { features?: PhotonFeature[] };
+    const seen = new Set<string>();
+    const data = (payload.features || [])
+      .filter((feature) => {
+        const featureCountry = (feature.properties?.countrycode || '').toUpperCase();
+        return !countryCode || !featureCountry || featureCountry === countryCode.toUpperCase();
+      })
+      .map((feature) => {
+        const name = firstString(feature.properties?.name);
+        const locality = firstString(
+          feature.properties?.city,
+          feature.properties?.district,
+          feature.properties?.county,
+          name
+        );
+        const region = firstString(feature.properties?.state, feature.properties?.country);
         return {
-          label: display,
+          label: [name, locality !== name ? locality : '', region].filter(Boolean).join(', '),
           locality,
           region,
         };
-      }) || [];
+      })
+      .filter((item) => {
+        const key = `${item.label}|${item.locality || ''}|${item.region || ''}`;
+        if (!item.label || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
 
     return jsonResponse({ data });
   } catch (error) {
@@ -90,7 +91,7 @@ function sanitizeCountryCode(value: unknown) {
   return normalized || 'BR';
 }
 
-function firstString(...values: unknown[]) {
+function firstString(...values: Array<string | undefined>) {
   for (const value of values) {
     if (typeof value === 'string' && value.trim()) {
       return value.trim();

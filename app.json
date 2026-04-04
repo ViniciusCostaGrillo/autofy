@@ -45,6 +45,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f8fbc73d-25dd-4710-ac9e-2a0588bc3ce1"
+      }
+    },
+    "owner": "iviny0612"
   }
 }
