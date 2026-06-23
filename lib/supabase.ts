@@ -6,13 +6,11 @@ import { secureSessionStorage } from './secureStorage';
 export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 export const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Supabase env vars missing. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.'
-  );
-}
+// Fallback to placeholder to prevent module load-time crashes in environments where env variables are not supplied (e.g. EAS build without local .env).
+const activeUrl = supabaseUrl || 'https://placeholder.supabase.co';
+const activeAnonKey = supabaseAnonKey || 'placeholder-key';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(activeUrl, activeAnonKey, {
   auth: {
     storage: secureSessionStorage,
     autoRefreshToken: true,

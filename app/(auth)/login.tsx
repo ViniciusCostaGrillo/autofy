@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Car } from 'lucide-react-native';
+import { Car, AlertTriangle } from 'lucide-react-native';
 import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { supabaseUrl } from '@/lib/supabase';
 
 type LoginMode = 'password' | 'otp';
 type PasswordAction = 'signin' | 'signup';
@@ -12,6 +13,7 @@ type OtpStep = 'email' | 'otp';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const isSupabaseConfigured = !!supabaseUrl && supabaseUrl.startsWith('https://') && !supabaseUrl.includes('placeholder');
   const { sendOtp, verifyOtp, signInWithPassword, signUpWithPassword, signInAsAdmin, canUseLocalAdmin } = useAuth();
   const [mode, setMode] = useState<LoginMode>('password');
   const [passwordAction, setPasswordAction] = useState<PasswordAction>('signin');
@@ -152,6 +154,20 @@ export default function LoginScreen() {
             Controle seu carro com estilo
           </Text>
         </View>
+
+        {!isSupabaseConfigured && (
+          <View className="bg-[#E91429]/10 border border-[#E91429]/30 rounded-3xl p-5 mb-6 flex-row items-center gap-4">
+            <View className="w-10 h-10 rounded-full bg-[#E91429]/20 items-center justify-center">
+              <AlertTriangle size={22} color="#E91429" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-[#E91429] font-bold text-sm">Configuração Pendente</Text>
+              <Text className="text-textMuted text-xs mt-1 leading-4">
+                As credenciais do Supabase não foram encontradas. O login/registro real não funcionará até que você configure as variáveis de ambiente no EAS Build.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {canUseLocalAdmin ? (
           <Button
