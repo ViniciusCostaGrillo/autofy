@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { estimateRoute } from '@/lib/routeEstimate';
 import { FuelType, RouteEstimate } from '@/types/models';
 import { usePreferences } from '@/lib/PreferencesContext';
+import { localeForPreferences } from '@/lib/formatting';
 import { searchRoutePlaces } from '@/lib/routePlaces';
 import { logAppError } from '@/lib/errorLogger';
 import {
@@ -60,6 +61,8 @@ export default function NewTripModal() {
   const { addTrip } = useTrips();
   const { preferences, t } = usePreferences();
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
+  const locale = localeForPreferences(preferences);
+  const currency = preferences.currencyCode || 'BRL';
   const [pricingFuelType, setPricingFuelType] = useState<Extract<FuelType, 'gasoline' | 'ethanol' | 'diesel'>>(
     defaultPricingFuelType(defaultVehicle?.fuelType)
   );
@@ -514,13 +517,13 @@ export default function NewTripModal() {
                 Custo total estimado
               </Text>
               <Text className="text-white text-5xl font-black tracking-tighter mb-5">
-                {formatCurrency(result.totalCost)}
+                {formatCurrency(result.totalCost, locale, currency)}
               </Text>
               <View className="flex-row justify-between pt-4 border-t border-white/20">
                 <View>
                   <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Por passageiro</Text>
                   <Text className="text-white font-black text-xl mt-1">
-                    {formatCurrency(result.totalCost / result.passengers)}
+                    {formatCurrency(result.totalCost / result.passengers, locale, currency)}
                   </Text>
                 </View>
                 <View className="items-end">
@@ -539,8 +542,8 @@ export default function NewTripModal() {
                   label: 'Duracao',
                   value: result.durationMinutes ? `${result.durationMinutes} min` : 'Nao informada',
                 },
-                { label: 'Combustivel', value: formatCurrency(result.fuelCost) },
-                { label: 'Pedagio', value: formatCurrency(result.tollCost) },
+                { label: 'Combustivel', value: formatCurrency(result.fuelCost, locale, currency) },
+                { label: 'Pedagio', value: formatCurrency(result.tollCost, locale, currency) },
               ].map((item, index, items) => (
                 <View
                   key={item.label}

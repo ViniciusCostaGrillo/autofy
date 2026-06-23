@@ -5,8 +5,8 @@ const KEYS = {
   vehicles: 'autofy.localAdmin.vehicles',
   trips: 'autofy.localAdmin.trips',
   refuels: 'autofy.localAdmin.refuels',
-  oilChanges: 'autofy.oilChanges',
-  maintenanceExpenses: 'autofy.maintenanceExpenses',
+  oilChanges: 'autofy.localAdmin.oilChanges',
+  maintenanceExpenses: 'autofy.localAdmin.maintenanceExpenses',
   preferences: 'autofy.preferences',
 };
 

@@ -21,10 +21,10 @@ export const calculateConsumption = (distanceKm: number, liters: number): number
   return distanceKm / liters;
 };
 
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
+export const formatCurrency = (value: number, locale = 'pt-BR', currency = 'BRL'): string => {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'BRL',
+    currency,
   }).format(value);
 };
 

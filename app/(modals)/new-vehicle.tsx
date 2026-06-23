@@ -23,6 +23,8 @@ const schema = z.object({
   currentOdometer: z.string().transform((value) => Number(value)).pipe(z.number().min(0)),
 });
 
+type VehicleFormData = z.infer<typeof schema>;
+
 const FUEL_TYPES: { key: FuelType; label: string }[] = [
   { key: 'flex', label: 'Flex' },
   { key: 'gasoline', label: 'Gasolina' },
@@ -87,7 +89,7 @@ export default function NewVehicleModal() {
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: VehicleFormData) => {
     setSaving(true);
     setSubmitError('');
 

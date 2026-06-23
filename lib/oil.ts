@@ -3,7 +3,10 @@ import { OilChange, Vehicle } from '@/types/models';
 export function getUpcomingOilAlert(oilChanges: OilChange[], vehicle?: Vehicle) {
   if (!vehicle) return null;
 
-  const current = oilChanges.find((item) => item.vehicleId === vehicle.id);
+  // Use the most recent oil change record (sorted by changedAt descending)
+  const current = oilChanges
+    .filter((item) => item.vehicleId === vehicle.id)
+    .sort((a, b) => b.changedAt.localeCompare(a.changedAt))[0];
   if (!current) return null;
 
   const now = new Date();

@@ -29,6 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLocalAdmin, setIsLocalAdmin] = useState(false);
 
+  // Use a ref to track isLocalAdmin inside the listener without causing re-subscription
+  const isLocalAdminRef = React.useRef(isLocalAdmin);
+  useEffect(() => {
+    isLocalAdminRef.current = isLocalAdmin;
+  }, [isLocalAdmin]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -58,7 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!mounted || isLocalAdmin) return;
+      // Use ref to get latest value without dep array re-subscription
+      if (!mounted || isLocalAdminRef.current) return;
       setSession(nextSession);
     });
 
@@ -66,7 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [isLocalAdmin]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only — isLocalAdmin tracked via ref
 
   const sendOtp = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
