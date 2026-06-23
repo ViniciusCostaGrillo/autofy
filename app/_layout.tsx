@@ -135,7 +135,7 @@ function RootLayoutNav() {
           name="(modals)/new-vehicle"
           options={{
             presentation: 'modal',
-            title: 'Novo Veiculo',
+            title: 'Novo Veículo',
             headerStyle: { backgroundColor: '#1E1E1E' },
             headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
             headerTintColor: '#1DB954',
@@ -145,7 +145,7 @@ function RootLayoutNav() {
           name="(modals)/new-oil-change"
           options={{
             presentation: 'modal',
-            title: 'Troca de Oleo',
+            title: 'Troca de Óleo',
             headerStyle: { backgroundColor: '#1E1E1E' },
             headerTitleStyle: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
             headerTintColor: '#1DB954',

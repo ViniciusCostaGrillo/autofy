@@ -19,6 +19,7 @@ const mapRefuel = (row: any): Refuel => ({
   fuelType: (row.fuel_type || 'flex') as FuelType,
   fullTank: row.full_tank ?? true,
   gasStation: row.gas_station,
+  notes: row.notes,
   createdAt: row.created_at,
 });
 
@@ -99,6 +100,7 @@ export function useRefuels() {
       fuel_type: refuel.fuelType,
       full_tank: refuel.fullTank,
       gas_station: refuel.gasStation,
+      notes: refuel.notes,
     });
 
     if (error) {

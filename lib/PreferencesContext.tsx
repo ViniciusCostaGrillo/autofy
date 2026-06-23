@@ -78,7 +78,57 @@ type TranslationKey =
   | 'maintenance.category.insurance'
   | 'maintenance.category.parts'
   | 'maintenance.category.service'
-  | 'maintenance.category.other';
+  | 'maintenance.category.other'
+  | 'dashboard.currentVehicle'
+  | 'dashboard.addVehicle'
+  | 'dashboard.avgConsumption'
+  | 'dashboard.totalSpent'
+  | 'dashboard.costPerKm'
+  | 'dashboard.registerRefuel'
+  | 'dashboard.quickActions'
+  | 'dashboard.newTrip'
+  | 'dashboard.refuel'
+  | 'dashboard.oilRemainingKm'
+  | 'trip.selectedVehicle'
+  | 'trip.noVehicle'
+  | 'trip.baseConsumption'
+  | 'trip.origin'
+  | 'trip.originPlaceholder'
+  | 'trip.destination'
+  | 'trip.destinationPlaceholder'
+  | 'trip.fuelAveragePrice'
+  | 'trip.routeType'
+  | 'trip.oneWay'
+  | 'trip.roundTrip'
+  | 'trip.roundTripHint'
+  | 'trip.oneWayHint'
+  | 'trip.estimating'
+  | 'trip.estimateButton'
+  | 'trip.distance'
+  | 'trip.people'
+  | 'trip.fuelPrice'
+  | 'trip.tolls'
+  | 'trip.calculate'
+  | 'trip.estimatedTotal'
+  | 'trip.perPassenger'
+  | 'trip.fuel'
+  | 'trip.summary'
+  | 'trip.route'
+  | 'trip.duration'
+  | 'trip.toll'
+  | 'trip.save'
+  | 'trip.recalculate'
+  | 'trip.errNoVehicle'
+  | 'trip.errFillRoute'
+  | 'trip.errEstimateFailed'
+  | 'trip.errSaveFailed'
+  | 'trip.distanceSuggestedBy'
+  | 'trip.suggestion'
+  | 'trip.priceEditableHint'
+  | 'trip.tollManualHint'
+  | 'trip.in'
+  | 'trip.ref'
+  | 'trip.notInformed';
 
 interface PreferencesContextType {
   preferences: AppPreferences;
@@ -182,6 +232,56 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'maintenance.category.parts': 'Peças',
     'maintenance.category.service': 'Revisão/serviço',
     'maintenance.category.other': 'Outro',
+    'dashboard.currentVehicle': 'Veículo atual',
+    'dashboard.addVehicle': 'Adicione um carro',
+    'dashboard.avgConsumption': 'Consumo médio',
+    'dashboard.totalSpent': 'Gasto total',
+    'dashboard.costPerKm': 'Estimativa de custo por km',
+    'dashboard.registerRefuel': 'Registre um abastecimento',
+    'dashboard.quickActions': 'Ações rápidas',
+    'dashboard.newTrip': 'Nova viagem',
+    'dashboard.refuel': 'Abastecer',
+    'dashboard.oilRemainingKm': 'restantes',
+    'trip.selectedVehicle': 'Veículo selecionado',
+    'trip.noVehicle': 'Nenhum veículo',
+    'trip.baseConsumption': 'Consumo base',
+    'trip.origin': 'Origem',
+    'trip.originPlaceholder': 'Ex: Cascavel, PR',
+    'trip.destination': 'Destino',
+    'trip.destinationPlaceholder': 'Ex: Foz do Iguaçu, PR',
+    'trip.fuelAveragePrice': 'Combustível para preço médio',
+    'trip.routeType': 'Tipo de trajeto',
+    'trip.oneWay': 'Ida',
+    'trip.roundTrip': 'Ida + volta',
+    'trip.roundTripHint': 'A distância informada ou buscada é tratada como o trecho de ida. O cálculo dobra o total.',
+    'trip.oneWayHint': 'O cálculo considera apenas o percurso de ida.',
+    'trip.estimating': 'Buscando rota...',
+    'trip.estimateButton': 'Buscar distância e preço médio',
+    'trip.distance': 'Distância (km)',
+    'trip.people': 'Pessoas',
+    'trip.fuelPrice': 'Preço combustível',
+    'trip.tolls': 'Pedágios',
+    'trip.calculate': 'Calcular custo',
+    'trip.estimatedTotal': 'Custo total estimado',
+    'trip.perPassenger': 'Por passageiro',
+    'trip.fuel': 'Combustível',
+    'trip.summary': 'Resumo da rota',
+    'trip.route': 'Trajeto',
+    'trip.duration': 'Duração',
+    'trip.toll': 'Pedágio',
+    'trip.save': 'Salvar viagem',
+    'trip.recalculate': 'Recalcular',
+    'trip.errNoVehicle': 'Cadastre um veículo antes de planejar uma viagem.',
+    'trip.errFillRoute': 'Preencha origem e destino antes de buscar a rota.',
+    'trip.errEstimateFailed': 'Não foi possível buscar a distância automática.',
+    'trip.errSaveFailed': 'Não foi possível salvar a viagem. Tente novamente.',
+    'trip.distanceSuggestedBy': 'Distância de ida sugerida por',
+    'trip.suggestion': 'Sugestão',
+    'trip.priceEditableHint': 'Preço editável. Se a API não encontrar a média local, informe manualmente.',
+    'trip.tollManualHint': 'Pedágio continua manual por enquanto.',
+    'trip.in': 'em',
+    'trip.ref': 'ref.',
+    'trip.notInformed': 'Não informada',
   },
   en: {
     'tabs.home': 'Home',
@@ -254,6 +354,56 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'maintenance.category.parts': 'Parts',
     'maintenance.category.service': 'Service',
     'maintenance.category.other': 'Other',
+    'dashboard.currentVehicle': 'Current vehicle',
+    'dashboard.addVehicle': 'Add a vehicle',
+    'dashboard.avgConsumption': 'Avg. consumption',
+    'dashboard.totalSpent': 'Total spent',
+    'dashboard.costPerKm': 'Estimated cost per km',
+    'dashboard.registerRefuel': 'Register a refuel first',
+    'dashboard.quickActions': 'Quick actions',
+    'dashboard.newTrip': 'New trip',
+    'dashboard.refuel': 'Refuel',
+    'dashboard.oilRemainingKm': 'remaining',
+    'trip.selectedVehicle': 'Selected vehicle',
+    'trip.noVehicle': 'No vehicle',
+    'trip.baseConsumption': 'Base consumption',
+    'trip.origin': 'Origin',
+    'trip.originPlaceholder': 'e.g. Cascavel, PR',
+    'trip.destination': 'Destination',
+    'trip.destinationPlaceholder': 'e.g. Foz do Iguaçu, PR',
+    'trip.fuelAveragePrice': 'Fuel for average price',
+    'trip.routeType': 'Route type',
+    'trip.oneWay': 'One way',
+    'trip.roundTrip': 'Round trip',
+    'trip.roundTripHint': 'The distance entered or searched is treated as the one-way trip. The calculation doubles the total.',
+    'trip.oneWayHint': 'The calculation only considers the one-way route.',
+    'trip.estimating': 'Searching route...',
+    'trip.estimateButton': 'Search distance and average price',
+    'trip.distance': 'Distance (km)',
+    'trip.people': 'People',
+    'trip.fuelPrice': 'Fuel price',
+    'trip.tolls': 'Tolls',
+    'trip.calculate': 'Calculate cost',
+    'trip.estimatedTotal': 'Estimated total cost',
+    'trip.perPassenger': 'Per passenger',
+    'trip.fuel': 'Fuel',
+    'trip.summary': 'Route summary',
+    'trip.route': 'Route',
+    'trip.duration': 'Duration',
+    'trip.toll': 'Toll',
+    'trip.save': 'Save trip',
+    'trip.recalculate': 'Recalculate',
+    'trip.errNoVehicle': 'Register a vehicle before planning a trip.',
+    'trip.errFillRoute': 'Fill in origin and destination before searching the route.',
+    'trip.errEstimateFailed': 'Could not fetch route distance automatically.',
+    'trip.errSaveFailed': 'Could not save the trip. Try again.',
+    'trip.distanceSuggestedBy': 'One-way distance suggested by',
+    'trip.suggestion': 'Suggestion',
+    'trip.priceEditableHint': 'Editable price. If the API does not find local average, enter manually.',
+    'trip.tollManualHint': 'Toll is still manual for now.',
+    'trip.in': 'in',
+    'trip.ref': 'ref.',
+    'trip.notInformed': 'Not informed',
   },
   es: {
     'tabs.home': 'Inicio',
@@ -326,6 +476,56 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'maintenance.category.parts': 'Piezas',
     'maintenance.category.service': 'Servicio',
     'maintenance.category.other': 'Otro',
+    'dashboard.currentVehicle': 'Vehículo actual',
+    'dashboard.addVehicle': 'Agrega un vehículo',
+    'dashboard.avgConsumption': 'Consumo promedio',
+    'dashboard.totalSpent': 'Gasto total',
+    'dashboard.costPerKm': 'Costo estimado por km',
+    'dashboard.registerRefuel': 'Registra una carga primero',
+    'dashboard.quickActions': 'Acciones rápidas',
+    'dashboard.newTrip': 'Nuevo viaje',
+    'dashboard.refuel': 'Cargar',
+    'dashboard.oilRemainingKm': 'restantes',
+    'trip.selectedVehicle': 'Vehículo seleccionado',
+    'trip.noVehicle': 'Ningún vehículo',
+    'trip.baseConsumption': 'Consumo base',
+    'trip.origin': 'Origen',
+    'trip.originPlaceholder': 'Ej: Cascavel, PR',
+    'trip.destination': 'Destino',
+    'trip.destinationPlaceholder': 'Ej: Foz do Iguaçu, PR',
+    'trip.fuelAveragePrice': 'Combustible para precio medio',
+    'trip.routeType': 'Tipo de trayecto',
+    'trip.oneWay': 'Ida',
+    'trip.roundTrip': 'Ida + vuelta',
+    'trip.roundTripHint': 'La distancia informada o buscada es tratada como el viaje de ida. El cálculo duplica el total.',
+    'trip.oneWayHint': 'El cálculo considera solo el trayecto de ida.',
+    'trip.estimating': 'Buscando ruta...',
+    'trip.estimateButton': 'Buscar distancia y precio medio',
+    'trip.distance': 'Distancia (km)',
+    'trip.people': 'Personas',
+    'trip.fuelPrice': 'Precio del combustible',
+    'trip.tolls': 'Peajes',
+    'trip.calculate': 'Calcular costo',
+    'trip.estimatedTotal': 'Costo total estimado',
+    'trip.perPassenger': 'Por pasajero',
+    'trip.fuel': 'Combustible',
+    'trip.summary': 'Resumen de ruta',
+    'trip.route': 'Trayecto',
+    'trip.duration': 'Duración',
+    'trip.toll': 'Peaje',
+    'trip.save': 'Guardar viaje',
+    'trip.recalculate': 'Recalcular',
+    'trip.errNoVehicle': 'Registra un vehículo antes de planificar un viaje.',
+    'trip.errFillRoute': 'Completa el origen y destino antes de buscar la ruta.',
+    'trip.errEstimateFailed': 'No se pudo obtener la distancia de la ruta automáticamente.',
+    'trip.errSaveFailed': 'No se pudo guardar el viaje. Inténtalo de nuevo.',
+    'trip.distanceSuggestedBy': 'Distancia de ida sugerida por',
+    'trip.suggestion': 'Sugerencia',
+    'trip.priceEditableHint': 'Precio editable. Si la API no encuentra la media local, ingresa manualmente.',
+    'trip.tollManualHint': 'El peaje sigue siendo manual por ahora.',
+    'trip.in': 'en',
+    'trip.ref': 'ref.',
+    'trip.notInformed': 'No informada',
   },
 };
 

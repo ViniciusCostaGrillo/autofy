@@ -160,7 +160,7 @@ export default function NewTripModal() {
 
   const handleAutoEstimate = async () => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
+      setSubmitError(t('trip.errNoVehicle'));
       return;
     }
 
@@ -168,7 +168,7 @@ export default function NewTripModal() {
     const destination = getValues('destination')?.trim();
 
     if (!origin || !destination) {
-      setSubmitError('Preencha origem e destino antes de buscar a rota.');
+      setSubmitError(t('trip.errFillRoute'));
       return;
     }
 
@@ -198,7 +198,7 @@ export default function NewTripModal() {
         destination,
         countryCode: preferences.countryCode,
       });
-      const message = error instanceof Error ? error.message : 'Nao foi possivel buscar a distancia automatica.';
+      const message = error instanceof Error ? error.message : t('trip.errEstimateFailed');
       setSubmitError(message);
     } finally {
       setEstimating(false);
@@ -207,7 +207,7 @@ export default function NewTripModal() {
 
   const onSubmit = (data: { origin: string; destination: string; distanceKm: number; passengers: number; fuelPrice: number; tollCost: number }) => {
     if (!defaultVehicle) {
-      setSubmitError('Cadastre um veiculo antes de planejar uma viagem.');
+      setSubmitError(t('trip.errNoVehicle'));
       return;
     }
 
@@ -257,7 +257,7 @@ export default function NewTripModal() {
     setSaving(false);
 
     if (saveResult.error) {
-      setSubmitError('Nao foi possivel salvar a viagem. Tente novamente.');
+      setSubmitError(t('trip.errSaveFailed'));
       return;
     }
 
@@ -281,13 +281,13 @@ export default function NewTripModal() {
           <>
             <View className="mb-6 p-4 bg-surface rounded-3xl border border-surfaceLight">
               <Text className="text-xs font-bold uppercase tracking-widest text-textMuted mb-1">
-                Veiculo selecionado
+                {t('trip.selectedVehicle')}
               </Text>
               <Text className="text-textMain font-black text-lg tracking-tight">
-                {defaultVehicle?.nickname || 'Nenhum veiculo'}
+                {defaultVehicle?.nickname || t('trip.noVehicle')}
               </Text>
               <Text className="text-xs text-textMuted font-medium mt-0.5">
-                Consumo base: {defaultVehicle?.manualAvgConsumption} km/l
+                {t('trip.baseConsumption')}: {defaultVehicle?.manualAvgConsumption} km/l
               </Text>
             </View>
 
@@ -298,8 +298,8 @@ export default function NewTripModal() {
               name="origin"
               render={({ field: { onChange, value } }) => (
                 <Input
-                  label="Origem"
-                  placeholder="Ex: Cascavel, PR"
+                  label={t('trip.origin')}
+                  placeholder={t('trip.originPlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onFocus={() => setFocusedField('origin')}
@@ -317,8 +317,8 @@ export default function NewTripModal() {
               name="destination"
               render={({ field: { onChange, value } }) => (
                 <Input
-                  label="Destino"
-                  placeholder="Ex: Foz do Iguacu, PR"
+                  label={t('trip.destination')}
+                  placeholder={t('trip.destinationPlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onFocus={() => setFocusedField('destination')}
@@ -355,7 +355,7 @@ export default function NewTripModal() {
             {defaultVehicle?.fuelType === 'flex' ? (
               <View className="mb-4">
                 <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
-                  Combustivel para preco medio
+                  {t('trip.fuelAveragePrice')}
                 </Text>
                 <View className="flex-row gap-2">
                   {[
@@ -383,12 +383,12 @@ export default function NewTripModal() {
 
             <View className="mb-4">
               <Text className="text-textMuted font-bold text-sm tracking-widest mb-3 ml-2 uppercase">
-                Tipo de trajeto
+                {t('trip.routeType')}
               </Text>
               <View className="flex-row gap-2">
                 {[
-                  { key: 'one_way', label: 'Ida' },
-                  { key: 'round_trip', label: 'Ida + volta' },
+                  { key: 'one_way', label: t('trip.oneWay') },
+                  { key: 'round_trip', label: t('trip.roundTrip') },
                 ].map(({ key, label }) => (
                   <Button
                     key={key}
@@ -401,13 +401,13 @@ export default function NewTripModal() {
               </View>
               <Text className="text-textMuted text-xs mt-3 px-1">
                 {routeMode === 'round_trip'
-                  ? 'A distancia informada ou buscada e tratada como o trecho de ida. O calculo dobra o total.'
-                  : 'O calculo considera apenas o percurso de ida.'}
+                  ? t('trip.roundTripHint')
+                  : t('trip.oneWayHint')}
               </Text>
             </View>
 
             <Button
-              label={estimating ? 'Buscando rota...' : 'Buscar distancia e preco medio'}
+              label={estimating ? t('trip.estimating') : t('trip.estimateButton')}
               onPress={handleAutoEstimate}
               isLoading={estimating}
               className="mb-4"
@@ -420,7 +420,7 @@ export default function NewTripModal() {
                   name="distanceKm"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Distancia (km)"
+                      label={t('trip.distance')}
                       placeholder="150"
                       keyboardType="decimal-pad"
                       value={value}
@@ -432,7 +432,7 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.distanceSource ? (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Distancia de ida sugerida por {routeEstimate.distanceSource}.
+                    {t('trip.distanceSuggestedBy')} {routeEstimate.distanceSource}.
                   </Text>
                 ) : null}
               </View>
@@ -442,7 +442,7 @@ export default function NewTripModal() {
                   name="passengers"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Pessoas"
+                      label={t('trip.people')}
                       placeholder="1"
                       keyboardType="number-pad"
                       value={value}
@@ -462,7 +462,7 @@ export default function NewTripModal() {
                   name="fuelPrice"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Preco combustivel"
+                      label={t('trip.fuelPrice')}
                       placeholder="5.79"
                       keyboardType="decimal-pad"
                       value={value}
@@ -474,15 +474,15 @@ export default function NewTripModal() {
                 />
                 {routeEstimate?.suggestedFuelPrice ? (
                   <Text className="text-primary text-xs font-bold mt-[-10px] mb-4 px-1">
-                    Sugestao {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice)}
+                    {t('trip.suggestion')} {routeEstimate.fuelPriceSource}: {formatCurrency(routeEstimate.suggestedFuelPrice, locale, currency)}
                     {routeEstimate.fuelPriceCity && routeEstimate.fuelPriceState
-                      ? ` em ${routeEstimate.fuelPriceCity}/${routeEstimate.fuelPriceState}`
+                      ? ` ${t('trip.in')} ${routeEstimate.fuelPriceCity}/${routeEstimate.fuelPriceState}`
                       : ''}
-                    {routeEstimate.fuelPriceWeekLabel ? `, ref. ${routeEstimate.fuelPriceWeekLabel}` : ''}.
+                    {routeEstimate.fuelPriceWeekLabel ? `, ${t('trip.ref')} ${routeEstimate.fuelPriceWeekLabel}` : ''}.
                   </Text>
                 ) : (
                   <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                    Preco editavel. Se a API nao encontrar a media local, informe manualmente.
+                    {t('trip.priceEditableHint')}
                   </Text>
                 )}
               </View>
@@ -492,7 +492,7 @@ export default function NewTripModal() {
                   name="tollCost"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                      label="Pedagios"
+                      label={t('trip.tolls')}
                       placeholder="24.50"
                       keyboardType="decimal-pad"
                       value={value}
@@ -503,47 +503,47 @@ export default function NewTripModal() {
                   )}
                 />
                 <Text className="text-textMuted text-xs mt-[-10px] mb-4 px-1">
-                  Pedagio continua manual por enquanto.
+                  {t('trip.tollManualHint')}
                 </Text>
               </View>
             </View>
 
-            <Button label="Calcular custo" onPress={handleSubmit(onSubmit)} className="mt-2" />
+            <Button label={t('trip.calculate')} onPress={handleSubmit(onSubmit)} className="mt-2" />
           </>
         ) : (
           <View>
             <View className="bg-secondary rounded-3xl p-6 mb-6 border-b-4 border-[#1a4ba3]">
               <Text className="text-white/70 font-bold text-xs uppercase tracking-widest mb-1">
-                Custo total estimado
+                {t('trip.estimatedTotal')}
               </Text>
               <Text className="text-white text-5xl font-black tracking-tighter mb-5">
                 {formatCurrency(result.totalCost, locale, currency)}
               </Text>
               <View className="flex-row justify-between pt-4 border-t border-white/20">
                 <View>
-                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Por passageiro</Text>
+                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">{t('trip.perPassenger')}</Text>
                   <Text className="text-white font-black text-xl mt-1">
                     {formatCurrency(result.totalCost / result.passengers, locale, currency)}
                   </Text>
                 </View>
                 <View className="items-end">
-                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Combustivel</Text>
+                  <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">{t('trip.fuel')}</Text>
                   <Text className="text-white font-black text-xl mt-1">{result.requiredLiters.toFixed(2)} L</Text>
                 </View>
               </View>
             </View>
 
-            <Text className="text-textMain font-black text-xl tracking-tight mb-4">Resumo da rota</Text>
+            <Text className="text-textMain font-black text-xl tracking-tight mb-4">{t('trip.summary')}</Text>
             <View className="bg-surface rounded-3xl p-5 border border-surfaceLight mb-6">
               {[
-                { label: 'Trajeto', value: result.routeMode === 'round_trip' ? 'Ida + volta' : 'Ida' },
-                { label: 'Distancia', value: `${result.distanceKm.toFixed(1)} km` },
+                { label: t('trip.route'), value: result.routeMode === 'round_trip' ? t('trip.roundTrip') : t('trip.oneWay') },
+                { label: t('trip.distance'), value: `${result.distanceKm.toFixed(1)} km` },
                 {
-                  label: 'Duracao',
-                  value: result.durationMinutes ? `${result.durationMinutes} min` : 'Nao informada',
+                  label: t('trip.duration'),
+                  value: result.durationMinutes ? `${result.durationMinutes} min` : t('trip.notInformed'),
                 },
-                { label: 'Combustivel', value: formatCurrency(result.fuelCost, locale, currency) },
-                { label: 'Pedagio', value: formatCurrency(result.tollCost, locale, currency) },
+                { label: t('trip.fuel'), value: formatCurrency(result.fuelCost, locale, currency) },
+                { label: t('trip.toll'), value: formatCurrency(result.tollCost, locale, currency) },
               ].map((item, index, items) => (
                 <View
                   key={item.label}
@@ -558,9 +558,9 @@ export default function NewTripModal() {
             </View>
 
             {submitError ? <Text className="text-danger font-bold mb-4">{submitError}</Text> : null}
-            <Button label="Salvar viagem" onPress={handleSaveTrip} isLoading={saving} className="mb-4" />
+            <Button label={t('trip.save')} onPress={handleSaveTrip} isLoading={saving} className="mb-4" />
             <Button
-              label="Recalcular"
+              label={t('trip.recalculate')}
               variant="ghost"
               onPress={() => {
                 setSubmitError('');

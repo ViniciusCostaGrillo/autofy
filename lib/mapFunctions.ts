@@ -2,7 +2,7 @@ import { supabaseAnonKey, supabaseUrl } from './supabase';
 
 export async function invokeMapFunction<TResponse>(name: string, body: unknown): Promise<TResponse> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   const response = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
     method: 'POST',
