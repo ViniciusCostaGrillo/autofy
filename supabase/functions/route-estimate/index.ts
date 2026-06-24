@@ -1,8 +1,14 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
 const ANP_CACHE_TTL_MS = 1000 * 60 * 60 * 12;
 const ANP_GASOLINE_FILE_URL =
@@ -184,41 +190,97 @@ async function getRegionalFuelSuggestion(
     return null;
   }
 
-  const datasetKey = fuelType === 'diesel' ? 'diesel' : 'gasoline';
-  const rows = await getAnpRows(datasetKey);
-  const productMatcher = getAnpProductMatcher(fuelType);
   const normalizedState = normalizeText(state || '');
   const normalizedCity = normalizeText(city || '');
-  const relevantRows = rows.filter((row) => productMatcher(row.product));
+  const productKeyword = fuelType === 'ethanol' ? 'ETANOL' : fuelType === 'diesel' ? 'DIESEL' : 'GASOLINA';
 
-  if (relevantRows.length === 0) {
-    return null;
+  try {
+    // 1. Try to find the exact city and state in the fuel_prices database table
+    const { data: cityRows, error: cityError } = await supabaseClient
+      .from('fuel_prices')
+      .select('price, week_label')
+      .eq('state', normalizedState)
+      .eq('city', normalizedCity)
+      .ilike('product', `%${productKeyword}%`);
+
+    if (cityError) throw cityError;
+
+    if (cityRows && cityRows.length > 0) {
+      const avgPrice = cityRows.reduce((sum, row) => sum + Number(row.price), 0) / cityRows.length;
+      const latestDate = cityRows[0]?.week_label;
+      return {
+        suggestedFuelPrice: roundTo(avgPrice, 2),
+        city: toTitleCase(normalizedCity),
+        state: normalizedState,
+        weekLabel: latestDate || undefined,
+        source: 'ANP, media municipal de revenda (cache de banco de dados)',
+      };
+    }
+
+    // 2. Fallback to state average from cached database rows
+    const { data: stateRows, error: stateError } = await supabaseClient
+      .from('fuel_prices')
+      .select('price, week_label')
+      .eq('state', normalizedState)
+      .ilike('product', `%${productKeyword}%`);
+
+    if (stateError) throw stateError;
+
+    if (stateRows && stateRows.length > 0) {
+      const avgPrice = stateRows.reduce((sum, row) => sum + Number(row.price), 0) / stateRows.length;
+      const latestDate = stateRows[0]?.week_label;
+      return {
+        suggestedFuelPrice: roundTo(avgPrice, 2),
+        city: undefined,
+        state: normalizedState,
+        weekLabel: latestDate || undefined,
+        source: 'ANP, media estadual de revenda (cache de banco de dados)',
+      };
+    }
+  } catch (dbError) {
+    console.error(`Erro ao consultar cache do banco: ${dbError.message}. Usando fallback offline/CSV.`);
   }
 
-  const exactRows = relevantRows.filter(
-    (row) => row.state === normalizedState && row.city === normalizedCity
-  );
-  const fallbackRows = relevantRows.filter((row) => row.state === normalizedState);
-  const targetRows = exactRows.length > 0 ? exactRows : fallbackRows;
+  // 3. Fallback to the original method (online CSV download and parse)
+  console.log('Utilizando fallback de download de CSV da ANP...');
+  const datasetKey = fuelType === 'diesel' ? 'diesel' : 'gasoline';
+  try {
+    const rows = await getAnpRows(datasetKey);
+    const productMatcher = getAnpProductMatcher(fuelType);
+    const relevantRows = rows.filter((row) => productMatcher(row.product));
 
-  if (targetRows.length === 0) {
+    if (relevantRows.length === 0) {
+      return null;
+    }
+
+    const exactRows = relevantRows.filter(
+      (row) => row.state === normalizedState && row.city === normalizedCity
+    );
+    const fallbackRows = relevantRows.filter((row) => row.state === normalizedState);
+    const targetRows = exactRows.length > 0 ? exactRows : fallbackRows;
+
+    if (targetRows.length === 0) {
+      return null;
+    }
+
+    const latestDate = getLatestDate(targetRows);
+    const latestRows = latestDate ? targetRows.filter((row) => row.date === latestDate) : targetRows;
+    const averagePrice = latestRows.reduce((sum, row) => sum + row.price, 0) / latestRows.length;
+
+    return {
+      suggestedFuelPrice: roundTo(averagePrice, 2),
+      city: exactRows.length > 0 && normalizedCity ? toTitleCase(normalizedCity) : undefined,
+      state: normalizedState || undefined,
+      weekLabel: latestDate ? formatBrazilianDate(latestDate) : undefined,
+      source:
+        exactRows.length > 0
+          ? 'ANP, media municipal de revenda nas 4 ultimas semanas (CSV fallback)'
+          : 'ANP, media estadual de revenda nas 4 ultimas semanas (CSV fallback)',
+    };
+  } catch (fallbackError) {
+    console.error(`Falha no fallback de download do CSV: ${fallbackError.message}`);
     return null;
   }
-
-  const latestDate = getLatestDate(targetRows);
-  const latestRows = latestDate ? targetRows.filter((row) => row.date === latestDate) : targetRows;
-  const averagePrice = latestRows.reduce((sum, row) => sum + row.price, 0) / latestRows.length;
-
-  return {
-    suggestedFuelPrice: roundTo(averagePrice, 2),
-    city: exactRows.length > 0 && normalizedCity ? toTitleCase(normalizedCity) : undefined,
-    state: normalizedState || undefined,
-    weekLabel: latestDate ? formatBrazilianDate(latestDate) : undefined,
-    source:
-      exactRows.length > 0
-        ? 'ANP, media municipal de revenda nas 4 ultimas semanas'
-        : 'ANP, media estadual de revenda nas 4 ultimas semanas',
-  };
 }
 
 async function getAnpRows(datasetKey: 'gasoline' | 'diesel') {
