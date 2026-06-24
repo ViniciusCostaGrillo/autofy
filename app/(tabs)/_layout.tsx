@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, MapPin, Droplets, Car, Wrench, Settings } from 'lucide-react-native';
+import { Home, Fuel, History, Car, User, Wrench } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePreferences } from '@/lib/PreferencesContext';
 
@@ -11,7 +11,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#1DB954',
+        tabBarActiveTintColor: '#3B82F6', // Blue matching the mockup active state
         tabBarInactiveTintColor: '#B3B3B3',
         tabBarHideOnKeyboard: true,
         lazy: true,
@@ -49,24 +49,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="trips"
-        options={{
-          title: t('tabs.trips'),
-          tabBarIcon: ({ color }) => <MapPin size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="refuels"
         options={{
           title: t('tabs.refuels'),
-          tabBarIcon: ({ color }) => <Droplets size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Fuel size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="maintenance"
+        name="trips"
         options={{
-          title: t('tabs.maintenance'),
-          tabBarIcon: ({ color }) => <Wrench size={24} color={color} />,
+          title: t('tabs.trips'),
+          tabBarIcon: ({ color }) => <History size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -80,7 +73,13 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: t('tabs.settings'),
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="maintenance"
+        options={{
+          href: null, // Hide maintenance from the tab bar but keep the route
         }}
       />
     </Tabs>
