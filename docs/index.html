@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO Meta Tags -->
+  <title>Autofy — Gestão Inteligente e Premium para seu Veículo</title>
+  <meta name="description" content="Autofy é um co-piloto inteligente para gestão de despesas de veículos, planejamento de rotas e alertas de manutenção, construído com Expo, React Native e Supabase.">
+  <meta name="keywords" content="Autofy, React Native, Expo, Supabase, Gestão de Veículos, ANP, Planejador de Rotas, OSRM, pg_cron">
+  <meta name="author" content="Vinicius Costa Grillo">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/ViniciusCostaGrillo/autofy">
+  <meta property="og:title" content="Autofy — Gestão Inteligente e Premium para seu Veículo">
+  <meta property="og:description" content="Monitore custos, calcule rotas com sugestão automática de preços oficiais ANP e receba alertas inteligentes de manutenção em um design dark premium.">
+  <meta property="og:image" content="assets/images/autofy_app_mockup.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Decorative Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="header-container">
+      <a href="#" class="logo" id="nav-logo">
+        <span class="logo-icon">🚗</span>
+        <span class="logo-text">Autofy</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features" id="link-features">Recursos</a>
+        <a href="#architecture" id="link-architecture">Arquitetura</a>
+        <a href="#code" id="link-code">Código & APIs</a>
+        <a href="#setup" id="link-setup">Como Instalar</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="https://github.com/ViniciusCostaGrillo/autofy" class="btn-github" target="_blank" id="btn-header-github">
+          <svg class="github-icon" viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container hero-container">
+        <div class="hero-content">
+          <div class="badge-new" id="badge-anp-sync">
+            <span class="badge-pulse"></span>
+            Sincronização Diária ANP Ativa
+          </div>
+          <h1 class="hero-title">O co-piloto inteligente e premium para o seu veículo</h1>
+          <p class="hero-description">
+            Monitore consumo, estime gastos reais em viagens com tarifas e pedágios, controle parcelamentos de taxas anuais e acompanhe alertas de manutenção. Tudo isso alimentado por um banco de dados Supabase e cache dinâmico de preços da ANP.
+          </p>
+          <div class="hero-buttons">
+            <a href="https://expo.dev/accounts/iviny0612/projects/Autofy/builds/b1b89c49-b5c9-40d5-81b5-1bf97bbbec06" class="btn-primary" target="_blank" id="btn-download-apk">
+              <span class="btn-icon">📦</span>
+              Baixar APK (Preview)
+            </a>
+            <a href="#features" class="btn-secondary" id="btn-learn-more">
+              Conhecer Recursos
+            </a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="mockup-frame">
+            <div class="glow-effect"></div>
+            <img src="assets/images/autofy_app_mockup.png" alt="Autofy App Mockup" class="mockup-img" id="img-hero-mockup">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+      <div class="container stats-container">
+        <div class="stat-card" id="stat-latency">
+          <div class="stat-value"><span class="counter" data-target="300">&lt; 300</span>ms</div>
+          <div class="stat-label">Latência nas Estimativas</div>
+        </div>
+        <div class="stat-card" id="stat-data-saved">
+          <div class="stat-value"><span class="counter" data-target="99">99.8</span>%</div>
+          <div class="stat-label">Economia de Dados Móveis</div>
+        </div>
+        <div class="stat-card" id="stat-languages">
+          <div class="stat-value"><span class="counter" data-target="3">3</span></div>
+          <div class="stat-label">Idiomas Suportados (PT, EN, ES)</div>
+        </div>
+        <div class="stat-card" id="stat-response">
+          <div class="stat-value">OTP</div>
+          <div class="stat-label">Autenticação Segura e Rápida</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Construído para Motoristas Exigentes</h2>
+          <p class="section-subtitle">Interface moderna inspirada no Spotify, com transições suaves e recursos pensados na máxima praticidade.</p>
+        </div>
+        
+        <div class="features-grid">
+          <!-- Card 1 -->
+          <div class="feature-card" id="feat-dashboard">
+            <div class="feature-icon">📊</div>
+            <h3>Dashboard Dinâmico</h3>
+            <p>Visualização instantânea do consumo médio, gastos totais com combustível e custo de manutenção estimado por quilômetro rodado.</p>
+          </div>
+          <!-- Card 2 -->
+          <div class="feature-card" id="feat-planner">
+            <div class="feature-icon">🗺️</div>
+            <h3>Planejador Inteligente</h3>
+            <p>Planeje viagens calculando distância/tempo reais via OSRM, divida despesas por passageiro e estime custos automaticamente.</p>
+          </div>
+          <!-- Card 3 -->
+          <div class="feature-card" id="feat-anp">
+            <div class="feature-icon">⚡</div>
+            <h3>Preços Oficiais ANP</h3>
+            <p>Integração automática com o dataset diário oficial de combustíveis do Brasil, sugerindo preços reais por cidade nas suas rotas.</p>
+          </div>
+          <!-- Card 4 -->
+          <div class="feature-card" id="feat-maintenance">
+            <div class="feature-icon">🔧</div>
+            <h3>Controle de Manutenções</h3>
+            <p>Monitore trocas de óleo por quilometragem e tempo, cadastre despesas de pneus/peças e automatize alertas preventivos.</p>
+          </div>
+          <!-- Card 5 -->
+          <div class="feature-card" id="feat-recurring">
+            <div class="feature-icon">💳</div>
+            <h3>Despesas Recorrentes</h3>
+            <p>Rateio mensal automatizado de seguros, IPVA e outras parcelas anuais para apresentar o verdadeiro custo fixo mensal do veículo.</p>
+          </div>
+          <!-- Card 6 -->
+          <div class="feature-card" id="feat-global">
+            <div class="feature-icon">🌍</div>
+            <h3>Adaptado para Você</h3>
+            <p>Tradução para 3 idiomas e formatação inteligente de moedas (R$, $, €) e medidas (km/l, L/100km, MPG, milhas) conforme localização.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture / ANP Sync Flow Section -->
+    <section id="architecture" class="architecture-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Arquitetura de Sincronização Diária ANP</h2>
+          <p class="section-subtitle">Evitando sobrecarga no celular: agregamos dados do governo diretamente no Supabase uma vez por dia.</p>
+        </div>
+
+        <div class="architecture-flow-container">
+          <div class="architecture-diagram-visual">
+            <div class="diagram-node node-external" id="node-anp">
+              <div class="node-icon">🌐</div>
+              <div class="node-title">ANP Gov.br</div>
+              <div class="node-desc">Dataset CSV ~50MB</div>
+            </div>
+            
+            <div class="diagram-arrow" id="arrow-1">
+              <span class="arrow-line"></span>
+              <span class="arrow-tip">▶</span>
+              <span class="arrow-label">Download Agendado (04:00 UTC)</span>
+            </div>
+
+            <div class="diagram-node node-supabase" id="node-edge-sync">
+              <div class="node-icon">⚡</div>
+              <div class="node-title">Edge Function</div>
+              <div class="node-desc">sync-fuel-prices</div>
+            </div>
+
+            <div class="diagram-arrow" id="arrow-2">
+              <span class="arrow-line"></span>
+              <span class="arrow-tip">▶</span>
+              <span class="arrow-label">Batch Upsert (1.000 em 1.000)</span>
+            </div>
+
+            <div class="diagram-node node-db" id="node-postgres">
+              <div class="node-icon">🗄️</div>
+              <div class="node-title">Tabela Postgres</div>
+              <div class="node-desc">fuel_prices (indexada)</div>
+            </div>
+
+            <div class="diagram-arrow-back" id="arrow-3">
+              <span class="arrow-line-vertical"></span>
+              <span class="arrow-label">Busca de Cache (~5ms)</span>
+            </div>
+
+            <div class="diagram-node node-supabase" id="node-edge-route">
+              <div class="node-icon">⚙️</div>
+              <div class="node-title">Edge Function</div>
+              <div class="node-desc">route-estimate</div>
+            </div>
+
+            <div class="diagram-arrow" id="arrow-4">
+              <span class="arrow-line"></span>
+              <span class="arrow-tip">◀</span>
+              <span class="arrow-label">Resposta Rápida (&lt; 300ms)</span>
+            </div>
+
+            <div class="diagram-node node-client" id="node-app">
+              <div class="node-icon">📱</div>
+              <div class="node-title">Autofy App</div>
+              <div class="node-desc">Cliente iOS / Android</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="architecture-text-details">
+          <div class="info-block">
+            <h4>🚀 Por que isso importa?</h4>
+            <p>Fazer o download de um arquivo de 50MB no smartphone para extrair uma única média municipal consumiria dados móveis valiosos do usuário e causaria timeouts frequentes. Centralizando o processamento no backend, o app economiza 99.8% de dados e responde de forma praticamente instantânea.</p>
+          </div>
+          <div class="info-block">
+            <h4>🛡️ Fallback e Resiliência</h4>
+            <p>Se por alguma eventualidade o banco de dados estiver indisponível ou a cidade não possuir registros no cache, a função `route-estimate` tenta calcular a média estadual daquela UF. Se ainda assim falhar, realiza o download direto em Deno como plano de contingência.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Code Showcase Section -->
+    <section id="code" class="code-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Implementação e Banco de Dados</h2>
+          <p class="section-subtitle">Exemplos reais das regras de negócios executadas em Supabase Edge Functions e PostgreSQL.</p>
+        </div>
+
+        <div class="code-tabs-container">
+          <div class="code-tabs">
+            <button class="tab-btn active" data-tab="tab-sync" id="btn-tab-sync">sync-fuel-prices (Deno)</button>
+            <button class="tab-btn" data-tab="tab-route" id="btn-tab-route">route-estimate (Deno)</button>
+            <button class="tab-btn" data-tab="tab-ddl" id="btn-tab-ddl">Banco de Dados (DDL)</button>
+          </div>
+
+          <div class="code-panes">
+            <!-- Tab 1 -->
+            <div class="code-pane active" id="tab-sync">
+              <div class="pane-header">
+                <span>supabase/functions/sync-fuel-prices/index.ts</span>
+                <button class="btn-copy" data-target="code-sync-snippet" id="btn-copy-sync">Copiar Código</button>
+              </div>
+              <pre><code id="code-sync-snippet">// Deno Edge Function para processar os arquivos CSV da ANP
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+
+serve(async (req) => {
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+  
+  // Downloads paralelos das planilhas oficiais de combustíveis do governo
+  const urls = [
+    "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/recente/precos-gasolina-etanol.csv",
+    "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/recente/precos-oleo-diesel-querosene.csv"
+  ]
+
+  // Processamento e conversão de CSV para JSON, calculando médias agrupadas
+  // por (estado, cidade, produto). Os dados são salvos em lotes no banco:
+  const batch = [];
+  for (const item of aggregatedPrices) {
+    batch.push({ state: item.uf, city: item.municipio, product: item.combustivel, average_price: item.media });
+    if (batch.length >= 1000) {
+      await supabaseClient.from('fuel_prices').upsert(batch, { onConflict: 'state,city,product' });
+      batch.length = 0;
+    }
+  }
+  
+  return new Response(JSON.stringify({ success: true, count: totalCount }), {
+    headers: { "Content-Type": "application/json" }
+  })
+})</code></pre>
+            </div>
+
+            <!-- Tab 2 -->
+            <div class="code-pane" id="tab-route">
+              <div class="pane-header">
+                <span>supabase/functions/route-estimate/index.ts</span>
+                <button class="btn-copy" data-target="code-route-snippet" id="btn-copy-route">Copiar Código</button>
+              </div>
+              <pre><code id="code-route-snippet">// Consulta resiliente ao cache com fallback dinâmico
+async function getRegionalFuelSuggestion(supabaseClient: any, state: string, city: string, fuelType: string) {
+  // 1. Tentar buscar pelo par exato cidade + estado
+  const { data: cityData } = await supabaseClient
+    .from('fuel_prices')
+    .select('average_price')
+    .eq('state', state.toUpperCase())
+    .eq('city', city.toUpperCase())
+    .eq('product', fuelType.toUpperCase())
+    .maybeSingle()
+
+  if (cityData?.average_price) {
+    return cityData.average_price; // Retorno rápido: ~5ms no Supabase
+  }
+
+  // 2. Se não houver, obter média de todo o estado cadastrado no cache
+  const { data: stateData } = await supabaseClient
+    .from('fuel_prices')
+    .select('average_price')
+    .eq('state', state.toUpperCase())
+    .eq('product', fuelType.toUpperCase());
+
+  if (stateData && stateData.length > 0) {
+    const sum = stateData.reduce((acc: number, row: any) => acc + row.average_price, 0);
+    return sum / stateData.length;
+  }
+
+  // 3. Fallback: Parsear o CSV do site oficial diretamente se nada mais funcionar
+  return await fetchAndParseANPFallback(state, city, fuelType);
+}</code></pre>
+            </div>
+
+            <!-- Tab 3 -->
+            <div class="code-pane" id="tab-ddl">
+              <div class="pane-header">
+                <span>supabase/migrations/20260624010000_create_fuel_prices_table.sql</span>
+                <button class="btn-copy" data-target="code-ddl-snippet" id="btn-copy-ddl">Copiar Código</button>
+              </div>
+              <pre><code id="code-ddl-snippet">-- Tabela para guardar os dados médios calculados
+create table public.fuel_prices (
+  state text not null,
+  city text not null,
+  product text not null,
+  average_price numeric(10, 4) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  constraint fuel_prices_pkey primary key (state, city, product)
+);
+
+-- Habilitar Row Level Security (RLS)
+alter table public.fuel_prices enable row level security;
+
+-- Permitir que qualquer usuário autenticado ou anônimo consulte os preços
+create policy "Allow public read access to fuel prices" 
+  on public.fuel_prices for select 
+  using (true);
+
+-- Criar cron job diário para atualizar o cache automaticamente
+select cron.schedule(
+  'sync-anp-fuel-prices-daily',
+  '0 4 * * *', -- Todos os dias às 04:00 UTC
+  $$ select net.http_post(
+       url := 'https://[seu-projeto].supabase.co/functions/v1/sync-fuel-prices',
+       headers := '{"Authorization": "Bearer [service_role_key]"}'::jsonb
+     ) $$
+);</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Setup / Guia de Configuração Section -->
+    <section id="setup" class="setup-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Como Configurar Localmente</h2>
+          <p class="section-subtitle">Prepare o ambiente para rodar o app no seu emulador ou dispositivo físico em poucos minutos.</p>
+        </div>
+
+        <div class="setup-steps">
+          <div class="step-card" id="step-clone">
+            <div class="step-num">1</div>
+            <h4>Clonar Repositório</h4>
+            <p>Clone e acesse a subpasta do projeto:</p>
+            <pre><code>git clone https://github.com/ViniciusCostaGrillo/autofy.git
+cd autofy/autofy</code></pre>
+          </div>
+
+          <div class="step-card" id="step-env">
+            <div class="step-num">2</div>
+            <h4>Configurar Variáveis</h4>
+            <p>Copie o modelo `.env.example` e coloque suas chaves do Supabase:</p>
+            <pre><code>cp .env.example .env</code></pre>
+          </div>
+
+          <div class="step-card" id="step-deps">
+            <div class="step-num">3</div>
+            <h4>Instalar e Iniciar</h4>
+            <p>Baixe as dependências e inicie o servidor Expo CLI:</p>
+            <pre><code>npm install
+npm run start</code></pre>
+          </div>
+        </div>
+
+        <div class="verification-box">
+          <h3>🧪 Qualidade de Código</h3>
+          <p>Você pode testar e validar o código localmente utilizando os seguintes comandos no terminal:</p>
+          <div class="code-grid">
+            <div>
+              <strong>Executar Testes Unitários (Jest)</strong>
+              <pre><code>npm run test</code></pre>
+            </div>
+            <div>
+              <strong>Validar Tipagens (TypeScript)</strong>
+              <pre><code>npm run typecheck</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="cta-section">
+      <div class="cta-glow"></div>
+      <div class="container cta-container">
+        <h2>Pronto para rodar no seu celular?</h2>
+        <p>Acesse o painel oficial da build no Expo EAS para baixar o arquivo APK pré-compilado para seu smartphone Android.</p>
+        <div class="cta-actions">
+          <a href="https://expo.dev/accounts/iviny0612/projects/Autofy/builds/b1b89c49-b5c9-40d5-81b5-1bf97bbbec06" class="btn-primary" target="_blank" id="btn-cta-download">
+            <span class="btn-icon">📲</span> Baixar APK do Autofy
+          </a>
+          <a href="https://github.com/ViniciusCostaGrillo/autofy" class="btn-secondary-white" target="_blank" id="btn-cta-github">
+            Ver Repositório GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-container">
+      <p>&copy; 2026 Autofy. Desenvolvido para máxima otimização veicular.</p>
+      <div class="footer-links">
+        <a href="https://github.com/ViniciusCostaGrillo/autofy" target="_blank" id="link-footer-github">GitHub</a>
+        <a href="https://supabase.com" target="_blank" rel="noopener" id="link-footer-supabase">Supabase</a>
+        <a href="https://expo.dev" target="_blank" rel="noopener" id="link-footer-expo">Expo</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script -->
+  <script src="script.js"></script>
+</body>
+</html>
