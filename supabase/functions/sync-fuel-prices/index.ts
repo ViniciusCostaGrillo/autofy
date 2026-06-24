@@ -1,3 +1,4 @@
+declare const Deno: any;
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
 
 const corsHeaders = {
@@ -17,7 +18,7 @@ interface GroupedData {
   latestDate: string;
 }
 
-Deno.serve(async (request) => {
+Deno.serve(async (request: any) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }

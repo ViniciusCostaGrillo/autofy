@@ -1,3 +1,4 @@
+declare const Deno: any;
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
 
 const corsHeaders = {
@@ -54,7 +55,7 @@ interface AnpRow {
   date: string;
 }
 
-Deno.serve(async (request) => {
+Deno.serve(async (request: any) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -206,7 +207,7 @@ async function getRegionalFuelSuggestion(
     if (cityError) throw cityError;
 
     if (cityRows && cityRows.length > 0) {
-      const avgPrice = cityRows.reduce((sum, row) => sum + Number(row.price), 0) / cityRows.length;
+      const avgPrice = cityRows.reduce((sum: number, row: any) => sum + Number(row.price), 0) / cityRows.length;
       const latestDate = cityRows[0]?.week_label;
       return {
         suggestedFuelPrice: roundTo(avgPrice, 2),
@@ -227,7 +228,7 @@ async function getRegionalFuelSuggestion(
     if (stateError) throw stateError;
 
     if (stateRows && stateRows.length > 0) {
-      const avgPrice = stateRows.reduce((sum, row) => sum + Number(row.price), 0) / stateRows.length;
+      const avgPrice = stateRows.reduce((sum: number, row: any) => sum + Number(row.price), 0) / stateRows.length;
       const latestDate = stateRows[0]?.week_label;
       return {
         suggestedFuelPrice: roundTo(avgPrice, 2),
@@ -238,7 +239,8 @@ async function getRegionalFuelSuggestion(
       };
     }
   } catch (dbError) {
-    console.error(`Erro ao consultar cache do banco: ${dbError.message}. Usando fallback offline/CSV.`);
+    const err = dbError as any;
+    console.error(`Erro ao consultar cache do banco: ${err?.message || err}. Usando fallback offline/CSV.`);
   }
 
   // 3. Fallback to the original method (online CSV download and parse)
@@ -278,7 +280,8 @@ async function getRegionalFuelSuggestion(
           : 'ANP, media estadual de revenda nas 4 ultimas semanas (CSV fallback)',
     };
   } catch (fallbackError) {
-    console.error(`Falha no fallback de download do CSV: ${fallbackError.message}`);
+    const err = fallbackError as any;
+    console.error(`Falha no fallback de download do CSV: ${err?.message || err}`);
     return null;
   }
 }
