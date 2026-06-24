@@ -51,6 +51,51 @@ Inspirado em uma estética premium e moderna baseada no padrão de design do Spo
 
 ---
 
+## 🏗️ Arquitetura de Sincronização Diária ANP
+
+Para garantir uma performance ultrarrápida (resposta em menos de **300ms**) e evitar o download de grandes arquivos CSV diretamente no celular, o Autofy implementa uma arquitetura automatizada utilizando **Supabase Edge Functions**, **pg_cron** e **pg_net**:
+
+```
+[ ANP Gov.br CSV Dataset ]
+          │
+          │ (Download diário às 04:00 AM UTC via cron)
+          ▼
+┌─────────────────────────────────┐
+│ Edge Function: sync-fuel-prices │
+│  (Agrega e calcula a média)     │
+└────────────────┬────────────────┘
+                 │
+                 │ (Upsert em lotes de 1.000)
+                 ▼
+┌─────────────────────────────────┐
+│  Tabela Postgres: fuel_prices   │
+│  (Indexado por estado/cidade)   │
+└────────────────▲────────────────┘
+                 │
+                 │ (Busca rápida no cache: ~5ms)
+                 │
+┌────────────────┴────────────────┐
+│ Edge Function: route-estimate   │
+└────────────────▲────────────────┘
+                 │
+                 │ (Requisição HTTP POST)
+                 │
+           [ App Autofy ]
+```
+
+- **Resiliência:** Se a tabela `fuel_prices` estiver vazia ou indisponível por oscilação do banco, a função realiza automaticamente o download direto da ANP como contingência (fallback).
+
+---
+
+## 🔒 Segurança e Integridade dos Dados
+
+O projeto segue padrões rígidos de segurança recomendados pela OWASP:
+- **Autenticação OTP:** Acesso seguro com senha ou código de verificação enviado diretamente ao e-mail via Supabase Auth.
+- **Row Level Security (RLS):** Todas as tabelas no PostgreSQL têm RLS habilitado. As políticas estritas (`auth.uid() = user_id`) garantem que os dados de veículos, abastecimentos e despesas de um usuário permaneçam totalmente privados e inacessíveis para outros.
+- **Segurança de Acesso:** A tabela de cache de preços de combustíveis (`fuel_prices`) é pública para leitura (`select`), mas totalmente protegida contra escrita/deleção, sendo acessada de forma administrativa apenas pela chave interna `service_role` durante o sincronismo diário.
+
+---
+
 ## 🛠️ Stack Tecnológica
 
 - **Framework:** [Expo SDK 54](https://expo.dev/) (React Native 0.81)
@@ -59,23 +104,6 @@ Inspirado em uma estética premium e moderna baseada no padrão de design do Spo
 - **Banco de Dados & Autenticação:** [Supabase](https://supabase.com/) com políticas estritas de RLS (Row Level Security) e envio de login OTP.
 - **Persistência de Dados Offline:** React Native AsyncStorage e Expo SecureStore (utilizando chunking para contornar o limite de 2KB).
 - **Testes Unitários:** Jest (testes de cálculos matemáticos de custo e algoritmos de alertas).
-
----
-
-## 🏗️ Estrutura do Código
-
-```
-autofy/
-├── app/                        # Expo Router — Rotas e Telas
-│   ├── _layout.tsx             # Root layout: Providers + Auth Guards
-│   ├── (tabs)/                 # Navegação por Abas (Dashboard, Históricos, Frota)
-│   └── (modals)/               # Formulários Modais (Nova Viagem, Novo Abastecimento)
-├── components/                 # Componentes Genéricos e UI Kit do Design System
-├── hooks/                      # Custom Hooks para chamadas e regras de negócio
-├── lib/                        # Integração de serviços (Auth, Supabase, LocalStore, i18n)
-├── types/                      # Definições de tipagem TypeScript
-└── utils/                      # Funções utilitárias puras e isoladas
-```
 
 ---
 
@@ -114,7 +142,7 @@ Pressione `a` para abrir no emulador Android ou `i` para o simulador iOS.
 
 ---
 
-## 🧪 Testes de Unidade
+## 🧪 Validação e Qualidade de Código
 
 Para rodar os testes unitários da lógica matemática de manutenção, consumo e alertas de óleo:
 ```bash
