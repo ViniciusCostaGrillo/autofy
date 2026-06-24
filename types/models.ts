@@ -18,6 +18,8 @@ export interface AppPreferences {
   unitSystem: UnitSystem;
   consumptionUnit: ConsumptionUnit;
   currencyCode: string;
+  name?: string;
+  avatarUrl?: string;
 }
 
 export interface RouteEstimate {

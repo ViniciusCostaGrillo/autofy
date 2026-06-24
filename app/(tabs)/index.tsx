@@ -10,7 +10,6 @@ import {
   Bell,
   ChevronRight,
   Coins,
-  History,
   LogOut,
 } from 'lucide-react-native';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -61,111 +60,252 @@ export default function DashboardScreen() {
   );
 
   const defaultVehicle = vehicles.find((vehicle) => vehicle.isDefault) || vehicles[0];
-  const totalSpent = refuels.reduce((sum, refuel) => sum + refuel.totalPrice, 0);
-
-  const estimatedCostPerKm = (() => {
-    if (!defaultVehicle || defaultVehicle.manualAvgConsumption === 0) return null;
-
-    const lastRefuel = refuels[0];
-    if (!lastRefuel) return null;
-
-    return lastRefuel.pricePerLiter / defaultVehicle.manualAvgConsumption;
-  })();
-
   const loading = vehiclesLoading || refuelsLoading;
 
-  // Obter nome do usuário logado ou João como fallback
-  const userName = session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'João';
+  // 1. Obter dados do usuário logado ou "João" como fallback
+  const userName = preferences.name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'João';
   const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+  const displayAvatarUrl = preferences.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80';
 
-  // Mês atual em português formatado
+  // 2. Mês atual formatado no idioma correto
   const currentMonthName = new Date().toLocaleString(preferences.language || 'pt-BR', { month: 'long' });
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
-  // Lógica de Atividade Recente com mesclagem e fallback
+  // 3. Cálculos de Gastos Dinâmicos para o Mês Vigente (Gasto Total)
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthIdx = now.getMonth();
+
+  const currentMonthRefuels = refuels.filter((r) => {
+    const d = new Date(r.date);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonthIdx;
+  });
+
+  const currentMonthExpenses = expenses.filter((e) => {
+    const d = new Date(e.date);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonthIdx;
+  });
+
+  let fuelSum = currentMonthRefuels.reduce((sum, r) => sum + r.totalPrice, 0);
+  let maintSum = currentMonthExpenses
+    .filter((e) => ['oil_change', 'tires', 'parts', 'service'].includes(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+  let taxSum = currentMonthExpenses
+    .filter((e) => ['insurance', 'other'].includes(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+  let monthlyTotal = fuelSum + maintSum + taxSum;
+
+  // Fallback para histórico acumulado total caso não haja gastos no mês corrente
+  const hasMonthlySpent = monthlyTotal > 0;
+  if (!hasMonthlySpent) {
+    fuelSum = refuels.reduce((sum, r) => sum + r.totalPrice, 0);
+    maintSum = expenses
+      .filter((e) => ['oil_change', 'tires', 'parts', 'service'].includes(e.category))
+      .reduce((sum, e) => sum + e.amount, 0);
+    taxSum = expenses
+      .filter((e) => ['insurance', 'other'].includes(e.category))
+      .reduce((sum, e) => sum + e.amount, 0);
+    monthlyTotal = fuelSum + maintSum + taxSum;
+  }
+
+  // Porcentagens dinâmicas por categoria de despesas
+  let fuelPercent = 0;
+  let maintPercent = 0;
+  let taxPercent = 0;
+
+  if (monthlyTotal > 0) {
+    fuelPercent = Math.round((fuelSum / monthlyTotal) * 100);
+    maintPercent = Math.round((maintSum / monthlyTotal) * 100);
+    taxPercent = Math.round((taxSum / monthlyTotal) * 100);
+
+    // Ajustar soma das frações arredondadas para somar 100% exatos
+    const sum = fuelPercent + maintPercent + taxPercent;
+    if (sum > 0 && sum !== 100) {
+      const diff = 100 - sum;
+      if (fuelPercent >= maintPercent && fuelPercent >= taxPercent) {
+        fuelPercent += diff;
+      } else if (maintPercent >= fuelPercent && maintPercent >= taxPercent) {
+        maintPercent += diff;
+      } else {
+        taxPercent += diff;
+      }
+    }
+  } else {
+    // Fallback padrão amigável para base limpa
+    fuelPercent = 0;
+    maintPercent = 0;
+    taxPercent = 0;
+  }
+
+  const displayTotalSpent = formatCurrencyForPreferences(monthlyTotal, preferences);
+
+  // 4. Consumo Médio Dinâmico
+  const displayAvgConsumption = defaultVehicle && defaultVehicle.manualAvgConsumption > 0
+    ? formatConsumptionForPreferences(defaultVehicle.manualAvgConsumption, preferences)
+    : '--';
+
+  // 5. Gráfico de Barras Dinâmico de Gastos de Combustível (Últimos 3 Meses)
+  const getMonthLabel = (offset: number) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - offset);
+    const label = d.toLocaleString(preferences.language || 'pt-BR', { month: 'short' });
+    return label.charAt(0).toUpperCase() + label.slice(1).replace('.', '');
+  };
+
+  const getMonthFuelSpent = (offset: number) => {
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() - offset);
+    const targetYear = targetDate.getFullYear();
+    const targetMonth = targetDate.getMonth();
+
+    return refuels
+      .filter((r) => {
+        const d = new Date(r.date);
+        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+      })
+      .reduce((sum, r) => sum + r.totalPrice, 0);
+  };
+
+  const label3 = getMonthLabel(2);
+  const label2 = getMonthLabel(1);
+  const label1 = getMonthLabel(0);
+
+  const fuelSpentM3 = getMonthFuelSpent(2);
+  const fuelSpentM2 = getMonthFuelSpent(1);
+  const fuelSpentM1 = getMonthFuelSpent(0);
+
+  let bar3Height = 4;
+  let bar2Height = 4;
+  let bar1Height = 4;
+
+  const maxSpent = Math.max(fuelSpentM3, fuelSpentM2, fuelSpentM1);
+  if (maxSpent > 0) {
+    const minBarHeight = 12;
+    const maxBarHeight = 44;
+    const scale = (val: number) => {
+      if (val === 0) return 4;
+      return minBarHeight + (val / maxSpent) * (maxBarHeight - minBarHeight);
+    };
+    bar3Height = scale(fuelSpentM3); // Ago/M3
+    bar2Height = scale(fuelSpentM2); // Set/M2
+    bar1Height = scale(fuelSpentM1); // Out/M1
+  }
+
+  // 6. Indicadores de Comparação / Tendências
+  let consumptionDiffText = '--';
+  let consumptionIsPositive = true;
+
+  if (fuelSpentM2 > 0) {
+    const diffPercent = Math.round(((fuelSpentM1 - fuelSpentM2) / fuelSpentM2) * 100);
+    if (diffPercent >= 0) {
+      consumptionDiffText = `↑ ${diffPercent}% vs. ${label2}`;
+      consumptionIsPositive = true;
+    } else {
+      consumptionDiffText = `↓ ${Math.abs(diffPercent)}% vs. ${label2}`;
+      consumptionIsPositive = false;
+    }
+  } else if (fuelSpentM1 > 0) {
+    consumptionDiffText = preferences.language === 'pt-BR' ? 'Novo' : preferences.language === 'es' ? 'Nuevo' : 'New';
+    consumptionIsPositive = true;
+  }
+
+  let spendingDiffText = '--';
+  let spendingIsDown = true;
+
+  const getMonthTotalSpent = (offset: number) => {
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() - offset);
+    const targetYear = targetDate.getFullYear();
+    const targetMonth = targetDate.getMonth();
+
+    const fSpent = refuels
+      .filter((r) => {
+        const d = new Date(r.date);
+        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+      })
+      .reduce((sum, r) => sum + r.totalPrice, 0);
+
+    const mSpent = expenses
+      .filter((e) => {
+        const d = new Date(e.date);
+        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+      })
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    return fSpent + mSpent;
+  };
+
+  const totalSpentM2 = getMonthTotalSpent(1);
+  const totalSpentM1 = monthlyTotal;
+
+  if (totalSpentM2 > 0 && hasMonthlySpent) {
+    const diffPercent = Math.round(((totalSpentM1 - totalSpentM2) / totalSpentM2) * 100);
+    if (diffPercent <= 0) {
+      spendingDiffText = `↓ ${Math.abs(diffPercent)}% vs. ${getMonthLabel(1)}`;
+      spendingIsDown = true;
+    } else {
+      spendingDiffText = `↑ ${diffPercent}% vs. ${getMonthLabel(1)}`;
+      spendingIsDown = false;
+    }
+  } else if (hasMonthlySpent) {
+    spendingDiffText = preferences.language === 'pt-BR' ? 'Novo' : preferences.language === 'es' ? 'Nuevo' : 'New';
+    spendingIsDown = false;
+  }
+
+  // 7. Custo Estimado por KM e Slider Linear
+  const estimatedCostPerKm = (() => {
+    if (!defaultVehicle || defaultVehicle.manualAvgConsumption === 0) return null;
+    const lastRefuel = refuels[0];
+    if (!lastRefuel) return null;
+    return lastRefuel.pricePerLiter / defaultVehicle.manualAvgConsumption;
+  })();
+
+  const hasRealCostPerKm = estimatedCostPerKm !== null && estimatedCostPerKm > 0;
+  const displayCostPerKmText = hasRealCostPerKm
+    ? `${formatCurrencyForPreferences(estimatedCostPerKm, preferences)}/km`
+    : '--';
+  const progressPercent = hasRealCostPerKm ? Math.min(Math.max((estimatedCostPerKm / 1.0) * 100, 0), 100) : 0;
+
+  // 8. Lista de Atividades Recentes Dinâmica
   const realActivities = [
     ...refuels.map((r) => ({
       id: `refuel-${r.id}`,
       type: 'refuel',
-      title: `Abastecimento - ${formatCurrencyForPreferences(r.totalPrice, preferences)}`,
+      title: `${preferences.language === 'pt-BR' ? 'Abastecimento' : preferences.language === 'es' ? 'Abastecimiento' : 'Refuel'} - ${formatCurrencyForPreferences(r.totalPrice, preferences)}`,
       date: new Date(r.date),
-      dateText: new Date(r.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
-      rawDateText: new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateText: new Date(r.date).toLocaleDateString(preferences.language === 'pt-BR' ? 'pt-BR' : 'en-US', { month: 'short', day: 'numeric' }),
     })),
     ...oilChanges.map((o) => ({
       id: `oil-${o.id}`,
       type: 'oil_change',
-      title: `Troca de Óleo - ${o.oilName || 'Serviço'}`,
+      title: `${preferences.language === 'pt-BR' ? 'Troca de Óleo' : preferences.language === 'es' ? 'Cambio de Aceite' : 'Oil Change'} - ${o.oilName}`,
       date: new Date(o.changedAt),
-      dateText: new Date(o.changedAt).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
-      rawDateText: new Date(o.changedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateText: new Date(o.changedAt).toLocaleDateString(preferences.language === 'pt-BR' ? 'pt-BR' : 'en-US', { month: 'short', day: 'numeric' }),
     })),
     ...expenses.map((e) => ({
       id: `expense-${e.id}`,
       type: 'expense',
       title: `${e.title} - ${formatCurrencyForPreferences(e.amount, preferences)}`,
       date: new Date(e.date),
-      dateText: new Date(e.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
-      rawDateText: new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateText: new Date(e.date).toLocaleDateString(preferences.language === 'pt-BR' ? 'pt-BR' : 'en-US', { month: 'short', day: 'numeric' }),
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-  // Atividades de fallback idênticas ao mockup
-  const mockActivities = [
-    {
-      id: 'mock-1',
-      type: 'refuel',
-      title: 'Abastecimento - R$ 245,50',
-      date: new Date('2026-10-28'),
-      dateText: 'Oct 28',
-      rawDateText: 'Oct 28',
-    },
-    {
-      id: 'mock-2',
-      type: 'oil_change',
-      title: 'Troca de Óleo - R$ 380,00',
-      date: new Date('2026-10-25'),
-      dateText: 'Oct 25',
-      rawDateText: 'Oct 25',
-    },
-    {
-      id: 'mock-3',
-      type: 'expense',
-      title: 'Lavagem - R$ 75,00',
-      date: new Date('2026-10-22'),
-      dateText: 'Oct 22',
-      rawDateText: 'Oct 22',
-    },
-  ];
+  // 9. Strings Dinâmicas de Internacionalização
+  const txtActive = preferences.language === 'pt-BR' ? 'Ativo' : preferences.language === 'es' ? 'Activo' : 'Active';
+  const txtMonthSummary = preferences.language === 'pt-BR' ? `Resumo de ${capitalizedMonth}` : preferences.language === 'es' ? `Resumen de ${capitalizedMonth}` : `${capitalizedMonth} Summary`;
+  const txtHello = preferences.language === 'pt-BR' ? 'Olá' : preferences.language === 'es' ? 'Hola' : 'Hello';
+  
+  const labelFuel = preferences.language === 'pt-BR' ? 'Combustível' : preferences.language === 'es' ? 'Combustible' : 'Fuel';
+  const labelMaint = preferences.language === 'pt-BR' ? 'Manutenção' : preferences.language === 'es' ? 'Mantenimiento' : 'Maintenance';
+  const labelTax = preferences.language === 'pt-BR' ? 'Impostos' : preferences.language === 'es' ? 'Impuestos' : 'Taxes';
+  const labelRegularGas = preferences.language === 'pt-BR' ? 'Gasolina Comum' : preferences.language === 'es' ? 'Gasolina Común' : 'Regular Gasoline';
+  const labelThisMonth = preferences.language === 'pt-BR' ? `Este Mês (${capitalizedMonth})` : preferences.language === 'es' ? `Este Mes (${capitalizedMonth})` : `This Month (${capitalizedMonth})`;
 
-  // Preencher até 3 atividades
-  const displayActivities = [...realActivities];
-  if (displayActivities.length < 3) {
-    const needed = 3 - displayActivities.length;
-    for (let i = 0; i < needed; i++) {
-      displayActivities.push(mockActivities[i]);
-    }
-  }
-  const finalActivities = displayActivities.slice(0, 3);
-
-  // Valor de consumo médio exibido (real ou mockup fallback de 14.5)
-  const displayAvgConsumption = defaultVehicle && defaultVehicle.manualAvgConsumption > 0
-    ? formatConsumptionForPreferences(defaultVehicle.manualAvgConsumption, preferences)
-    : '14.5 km/L';
-
-  // Valor de custo por km (real ou mockup fallback de 0.42)
-  const displayCostPerKmVal = estimatedCostPerKm !== null ? estimatedCostPerKm : 0.42;
-  const displayCostPerKmText = estimatedCostPerKm !== null 
-    ? `${formatCurrencyForPreferences(estimatedCostPerKm, preferences)} /km` 
-    : 'R$ 0,42 /km';
-
-  // Porcentagem da barra de progresso (baseada no custo por km, max 1.00)
-  const progressPercent = Math.min(Math.max((displayCostPerKmVal / 1.0) * 100, 0), 100);
-
-  // Valor total gasto (real ou mockup fallback de 1.845,70)
-  const displayTotalSpent = totalSpent > 0
-    ? formatCurrencyForPreferences(totalSpent, preferences)
-    : 'R$ 1.845,70';
+  const titleRecentActivity = preferences.language === 'pt-BR' ? 'Atividade Recente' : preferences.language === 'es' ? 'Actividad Reciente' : 'Recent Activity';
+  const titleCostPerKm = preferences.language === 'pt-BR' ? 'Custo Estimado por KM' : preferences.language === 'es' ? 'Costo Estimado por KM' : 'Estimated Cost per KM';
+  const txtBasedOn3 = preferences.language === 'pt-BR' ? 'Baseado nos últimos 3 meses' : preferences.language === 'es' ? 'Basado en los últimos 3 meses' : 'Based on last 3 months';
+  const btnImprove = preferences.language === 'pt-BR' ? 'Melhorar Eficiência' : preferences.language === 'es' ? 'Mejorar Eficiencia' : 'Improve Efficiency';
 
   return (
     <View className="flex-1 bg-[#121212]">
@@ -203,16 +343,16 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Bloco de Perfil: João */}
+        {/* Bloco de Perfil */}
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row items-center">
             <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80' }}
+              source={{ uri: displayAvatarUrl }}
               className="w-12 h-12 rounded-full border border-surfaceLight mr-3"
             />
             <View>
-              <Text className="text-xs font-semibold text-textMuted">Resumo de {capitalizedMonth}</Text>
-              <Text className="text-lg font-black text-white tracking-tight">Olá, {capitalizedName}!</Text>
+              <Text className="text-xs font-semibold text-textMuted">{txtMonthSummary}</Text>
+              <Text className="text-lg font-black text-white tracking-tight">{txtHello}, {capitalizedName}!</Text>
             </View>
           </View>
           <TouchableOpacity className="relative bg-surface p-3 rounded-full border border-surfaceLight">
@@ -232,13 +372,13 @@ export default function DashboardScreen() {
             </View>
             <View className="flex-1">
               <Text className="text-base font-bold text-white leading-5">
-                {defaultVehicle ? `${defaultVehicle.brand} ${defaultVehicle.model}` : 'Ford Focus'}
+                {defaultVehicle ? `${defaultVehicle.brand} ${defaultVehicle.model}` : t('dashboard.addVehicle')}
               </Text>
               <Text className="text-xs text-textMuted font-medium mt-0.5">
-                <Text className="text-[#10B981] font-bold">Ativo</Text> •{' '}
+                <Text className="text-[#10B981] font-bold">{txtActive}</Text> •{' '}
                 {defaultVehicle
                   ? formatDistanceForPreferences(defaultVehicle.currentOdometer, preferences)
-                  : '48.250 km'}
+                  : '--'}
               </Text>
             </View>
           </View>
@@ -250,77 +390,77 @@ export default function DashboardScreen() {
           {/* Card 1: Consumo Médio (Verde) */}
           <View className="flex-1 bg-surface rounded-3xl p-4 border border-[#10B981]/30">
             <Text className="text-[11px] font-bold uppercase tracking-wider text-[#10B981] mb-1">
-              Consumo Médio
+              {t('dashboard.avgConsumption')}
             </Text>
             <Text className="text-xl font-black text-white tracking-tighter mb-0.5">
               {displayAvgConsumption}
             </Text>
             <Text className="text-[10px] text-textMuted font-medium mb-3">
-              Gasolina Comum
+              {labelRegularGas}
             </Text>
 
             {/* Mini Gráfico de Barras */}
             <View className="flex-row items-end justify-between px-1 h-12 mb-3">
               <View className="items-center">
-                <View className="w-4 bg-[#10B981]/40 rounded-t h-4" />
-                <Text className="text-[8px] text-textMuted font-semibold mt-1">Ago</Text>
+                <View className="w-4 bg-[#10B981]/40 rounded-t" style={{ height: bar3Height }} />
+                <Text className="text-[8px] text-textMuted font-semibold mt-1">{label3}</Text>
               </View>
               <View className="items-center">
-                <View className="w-4 bg-[#10B981]/70 rounded-t h-7" />
-                <Text className="text-[8px] text-textMuted font-semibold mt-1">Set</Text>
+                <View className="w-4 bg-[#10B981]/70 rounded-t" style={{ height: bar2Height }} />
+                <Text className="text-[8px] text-textMuted font-semibold mt-1">{label2}</Text>
               </View>
               <View className="items-center">
-                <View className="w-4 bg-[#10B981] rounded-t h-11" />
-                <Text className="text-[8px] text-textMuted font-semibold mt-1">Out</Text>
+                <View className="w-4 bg-[#10B981] rounded-t" style={{ height: bar1Height }} />
+                <Text className="text-[8px] text-textMuted font-semibold mt-1">{label1}</Text>
               </View>
             </View>
 
             {/* Indicador de Desempenho */}
             <View className="bg-[#10B981]/10 py-1.5 px-3 rounded-full flex-row items-center justify-center">
-              <Text className="text-[10px] font-extrabold text-[#10B981]">↑ 4% vs. Set</Text>
+              <Text className="text-[10px] font-extrabold text-[#10B981]">{consumptionDiffText}</Text>
             </View>
           </View>
 
           {/* Card 2: Gasto Total (Azul) */}
           <View className="flex-1 bg-surface rounded-3xl p-4 border border-[#3B82F6]/30">
             <Text className="text-[11px] font-bold uppercase tracking-wider text-[#3B82F6] mb-1">
-              Gasto Total
+              {t('dashboard.totalSpent')}
             </Text>
             <Text className="text-xl font-black text-white tracking-tighter mb-0.5">
               {displayTotalSpent}
             </Text>
             <Text className="text-[10px] text-textMuted font-medium mb-3">
-              Este Mês ({capitalizedMonth})
+              {labelThisMonth}
             </Text>
 
             {/* Distribuição de Categorias */}
             <View className="flex-row justify-between items-center h-12 mb-3">
               <View className="items-center">
-                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#10B981]/20">
+                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#10B981]/25">
                   <Fuel size={11} color="#10B981" />
                 </View>
-                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>Combustível</Text>
-                <Text className="text-[8px] font-bold text-white">60%</Text>
+                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>{labelFuel}</Text>
+                <Text className="text-[8px] font-bold text-white">{fuelPercent}%</Text>
               </View>
               <View className="items-center">
-                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#3B82F6]/20">
+                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#3B82F6]/25">
                   <Wrench size={11} color="#3B82F6" />
                 </View>
-                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>Manutenção</Text>
-                <Text className="text-[8px] font-bold text-white">25%</Text>
+                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>{labelMaint}</Text>
+                <Text className="text-[8px] font-bold text-white">{maintPercent}%</Text>
               </View>
               <View className="items-center">
-                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#3B82F6]/20">
+                <View className="w-7 h-7 rounded-full bg-surfaceLight items-center justify-center border border-[#3B82F6]/25">
                   <Coins size={11} color="#3B82F6" />
                 </View>
-                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>Impostos</Text>
-                <Text className="text-[8px] font-bold text-white">15%</Text>
+                <Text className="text-[7px] text-textMuted mt-1" numberOfLines={1}>{labelTax}</Text>
+                <Text className="text-[8px] font-bold text-white">{taxPercent}%</Text>
               </View>
             </View>
 
             {/* Indicador de Desempenho */}
             <View className="bg-[#3B82F6]/10 py-1.5 px-3 rounded-full flex-row items-center justify-center">
-              <Text className="text-[10px] font-extrabold text-[#3B82F6]">↓ 2% vs. Meta</Text>
+              <Text className="text-[10px] font-extrabold text-[#3B82F6]">{spendingDiffText}</Text>
             </View>
           </View>
         </View>
@@ -330,13 +470,13 @@ export default function DashboardScreen() {
           <View className="flex-row justify-between items-start mb-2">
             <View>
               <Text className="text-xs font-bold uppercase tracking-wider text-textMuted">
-                Custo Estimado por KM
+                {titleCostPerKm}
               </Text>
               <Text className="text-2xl font-black text-white mt-1 tracking-tighter">
                 {displayCostPerKmText}
               </Text>
               <Text className="text-[10px] text-textMuted font-medium mt-0.5">
-                Based on últimos 3 meses
+                {txtBasedOn3}
               </Text>
             </View>
             <TouchableOpacity
@@ -344,7 +484,7 @@ export default function DashboardScreen() {
               hitSlop={10}
             >
               <Text className="text-xs font-black text-[#10B981] uppercase tracking-wider">
-                Melhorar Eficiência
+                {btnImprove}
               </Text>
             </TouchableOpacity>
           </View>
@@ -370,47 +510,66 @@ export default function DashboardScreen() {
         {/* Seção de Atividade Recente */}
         <View className="mb-2">
           <Text className="text-lg font-black text-white tracking-tight mb-4">
-            Atividade Recente
+            {titleRecentActivity}
           </Text>
 
-          {finalActivities.map((act, index) => {
-            const isRefuel = act.type === 'refuel';
-            const isOil = act.type === 'oil_change';
+          {realActivities.length === 0 ? (
+            <View className="bg-surface rounded-2xl p-6 border border-surfaceLight items-center justify-center">
+              <Text className="text-sm text-textMuted font-medium text-center">
+                {preferences.language === 'pt-BR' 
+                  ? 'Nenhuma atividade recente' 
+                  : preferences.language === 'es' 
+                  ? 'Sin actividad reciente' 
+                  : 'No recent activity'}
+              </Text>
+              <Text className="text-xs text-textMuted/60 text-center mt-1">
+                {preferences.language === 'pt-BR' 
+                  ? 'Abasteça seu carro ou registre gastos para vê-los aqui!' 
+                  : preferences.language === 'es' 
+                  ? '¡Abastece tu carro o registra gastos para verlos aquí!' 
+                  : 'Refuel your car or register expenses to see them here!'}
+              </Text>
+            </View>
+          ) : (
+            realActivities.slice(0, 3).map((act, index) => {
+              const isRefuel = act.type === 'refuel';
+              const isOil = act.type === 'oil_change';
 
-            return (
-              <View
-                key={act.id || index}
-                className="flex-row items-center justify-between bg-surface rounded-2xl p-4 border border-surfaceLight mb-3"
-              >
-                <View className="flex-row items-center flex-1 pr-4">
-                  {isRefuel ? (
-                    <View className="w-10 h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 items-center justify-center mr-3">
-                      <Fuel size={18} color="#10B981" />
+              return (
+                <View
+                  key={act.id || index}
+                  className="flex-row items-center justify-between bg-surface rounded-2xl p-4 border border-surfaceLight mb-3"
+                >
+                  <View className="flex-row items-center flex-1 pr-4">
+                    {isRefuel ? (
+                      <View className="w-10 h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/25 items-center justify-center mr-3">
+                        <Fuel size={18} color="#10B981" />
+                      </View>
+                    ) : isOil ? (
+                      <View className="w-10 h-10 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/25 items-center justify-center mr-3">
+                        <Wrench size={18} color="#F59E0B" />
+                      </View>
+                    ) : (
+                      <View className="w-10 h-10 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/25 items-center justify-center mr-3">
+                        <Car size={18} color="#3B82F6" />
+                      </View>
+                    )}
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-white" numberOfLines={1}>
+                        {act.title}
+                      </Text>
+                      <Text className="text-[11px] text-textMuted font-medium mt-0.5">
+                        {act.dateText}
+                      </Text>
                     </View>
-                  ) : isOil ? (
-                    <View className="w-10 h-10 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/20 items-center justify-center mr-3">
-                      <Wrench size={18} color="#F59E0B" />
-                    </View>
-                  ) : (
-                    <View className="w-10 h-10 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 items-center justify-center mr-3">
-                      <Car size={18} color="#3B82F6" />
-                    </View>
-                  )}
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-white" numberOfLines={1}>
-                      {act.title}
-                    </Text>
-                    <Text className="text-[11px] text-textMuted font-medium mt-0.5">
-                      {preferences.language === 'pt-BR' ? act.dateText : act.rawDateText}
-                    </Text>
                   </View>
+                  <Text className="text-[11px] font-semibold text-textMuted">
+                    {act.dateText}
+                  </Text>
                 </View>
-                <Text className="text-[11px] font-semibold text-textMuted">
-                  {preferences.language === 'pt-BR' ? act.dateText : act.rawDateText}
-                </Text>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
       </ScrollView>
     </View>
